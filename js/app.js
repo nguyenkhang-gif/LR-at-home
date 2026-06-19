@@ -85,8 +85,8 @@ const btnSavePreset = document.getElementById('btn-save-preset');
 
 // ── WASM init ──────────────────────────────────────────────────────────────
 getWasm()
-  .then((w) => { wasm = w; wasmStatus.textContent = 'WASM sẵn sàng'; wasmStatus.className = 'status-badge ready'; })
-  .catch(() => { wasmStatus.textContent = 'WASM lỗi'; wasmStatus.className = 'status-badge error'; });
+  .then((w) => { wasm = w; wasmStatus.textContent = 'WASM ready'; wasmStatus.className = 'status-badge ready'; })
+  .catch(() => { wasmStatus.textContent = 'WASM error'; wasmStatus.className = 'status-badge error'; });
 
 // ── Upload ─────────────────────────────────────────────────────────────────
 uploadZone.addEventListener('click', () => fileInput.click());
@@ -97,8 +97,8 @@ fileInput.addEventListener('change', () => { handleFile(fileInput.files[0]); fil
 
 function handleFile(file) {
   if (!file) return;
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { alert('Chỉ chấp nhận JPEG, PNG, WebP'); return; }
-  if (file.size > 20 * 1024 * 1024) { alert('Ảnh tối đa 20MB'); return; }
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { alert('Only JPEG, PNG, WebP accepted'); return; }
+  if (file.size > 20 * 1024 * 1024) { alert('Max image size is 20MB'); return; }
 
   uploadName.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB`;
 
@@ -237,13 +237,13 @@ function renderLayerList() {
     li.dataset.uid = layer.uid;
     li.draggable = true;
     li.innerHTML = `
-      <span class="layer-drag" title="Kéo để sắp xếp">⠿</span>
-      <button class="layer-eye ${layer.visible ? '' : 'hidden'}" data-uid="${layer.uid}" title="${layer.visible ? 'Ẩn layer' : 'Hiện layer'}">
+      <span class="layer-drag" title="Drag to reorder">⠿</span>
+      <button class="layer-eye ${layer.visible ? '' : 'hidden'}" data-uid="${layer.uid}" title="${layer.visible ? 'Hide layer' : 'Show layer'}">
         ${layer.visible ? EYE_OPEN : EYE_CLOSED}
       </button>
       <span class="layer-name ${layer.visible ? '' : 'muted'}">${filter.name}</span>
       <span class="layer-param-hint">${paramHint}</span>
-      <button class="layer-remove" data-uid="${layer.uid}" title="Xóa layer">×</button>
+      <button class="layer-remove" data-uid="${layer.uid}" title="Remove layer">×</button>
     `;
 
     li.addEventListener('click', (e) => {
@@ -584,7 +584,7 @@ function makePresetItem(preset) {
     <span class="preset-dot"></span>
     <span class="preset-name">${preset.name}</span>
     <span class="preset-layers">${preset.chain.length}</span>
-    ${!preset.builtin ? `<button class="preset-delete" title="Xóa">×</button>` : ''}
+    ${!preset.builtin ? `<button class="preset-delete" title="Delete">×</button>` : ''}
   `;
   item.addEventListener('click', (e) => {
     if (e.target.classList.contains('preset-delete')) return;
@@ -625,15 +625,15 @@ function renderPresets() {
   if (userPresets.length > 0) {
     const groupEl = document.createElement('div');
     groupEl.className = 'preset-group';
-    groupEl.innerHTML = `<p class="preset-group-label">Của tôi</p>`;
+    groupEl.innerHTML = `<p class="preset-group-label">My Presets</p>`;
     userPresets.forEach((p) => groupEl.appendChild(makePresetItem({ ...p, builtin: false })));
     presetList.appendChild(groupEl);
   }
 }
 
 btnSavePreset.addEventListener('click', () => {
-  if (filterChain.length === 0) { alert('Chưa có filter nào trong chain.'); return; }
-  const name = prompt('Tên preset:', 'My Preset');
+  if (filterChain.length === 0) { alert('No filters in chain yet.'); return; }
+  const name = prompt('Preset name:', 'My Preset');
   if (!name || !name.trim()) return;
   saveUserPreset(name.trim(), filterChain);
   renderPresets();
