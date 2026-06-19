@@ -310,6 +310,7 @@ function renderLayerListHighlight() {
 }
 
 function buildParamHint(filter, params) {
+  if (filter.hint) return filter.hint(params);
   const parts = filter.params.map((p) => {
     const v = params[p.id] ?? p.default;
     return p.step < 1 ? Number(v).toFixed(1) : String(Math.round(v));

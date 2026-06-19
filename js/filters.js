@@ -144,6 +144,7 @@ export const FILTERS = [
   },
   {
     id: 'hsl_adjust', name: 'HSL',
+    hint: () => 'per-color H/S/L',
     params: [
       { id: 'r_h', label: 'Red — Hue',      min: -180, max: 180, default: 0, step: 1 },
       { id: 'r_s', label: 'Red — Sat',       min: -100, max: 100, default: 0, step: 1 },
@@ -184,6 +185,7 @@ export const FILTERS = [
   },
   {
     id: 'tone_curve', name: 'Tone Curve',
+    hint: (p) => `B:${p.p0 ?? 0} M:${p.p2 ?? 128} W:${p.p4 ?? 255}`,
     params: [
       { id: 'p0', label: 'Blacks',   min: 0, max: 255, default: 0,   step: 1 },
       { id: 'p1', label: 'Shadows',  min: 0, max: 255, default: 64,  step: 1 },
@@ -200,6 +202,7 @@ export const FILTERS = [
   },
   {
     id: 'color_grade', name: 'Color Grading',
+    hint: (p) => `S ${Math.round(p.shadow_hue ?? 180)}° · M ${Math.round(p.mid_hue ?? 0)}° · H ${Math.round(p.hi_hue ?? 30)}°`,
     params: [
       { id: 'shadow_hue', label: 'Shadow Hue',  min: 0, max: 360, default: 180, step: 1 },
       { id: 'shadow_sat', label: 'Shadow Sat',  min: 0, max: 1,   default: 0,   step: 0.01 },
