@@ -488,35 +488,56 @@ function cgHslToRgb(h, s, l) {
 }
 
 function drawColorWheel(canvas, hue, sat) {
-  const W = canvas.width, H = canvas.height;
-  const cx = W / 2, cy = H / 2;
-  const r = Math.min(W, H) / 2 - 1;
-  const ctx = canvas.getContext('2d');
-  const img = ctx.createImageData(W, H);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const display = canvas.offsetWidth || 80;
+  const S = Math.round(display * dpr);
+  if (canvas.width !== S) { canvas.width = S; canvas.height = S; }
 
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const dx = x - cx, dy = y - cy;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= r) {
-        const h = ((Math.atan2(dy, dx) / (Math.PI * 2)) + 1) % 1;
-        const s = dist / r;
-        const [rr, gg, bb] = cgHslToRgb(h, s, 0.5);
-        const i = (y * W + x) * 4;
-        img.data[i] = rr; img.data[i+1] = gg; img.data[i+2] = bb; img.data[i+3] = 255;
-      }
-    }
+  const ctx = canvas.getContext('2d');
+  const cx = S / 2, cy = S / 2;
+  const r = S / 2 - dpr;
+
+  ctx.clearRect(0, 0, S, S);
+
+  // Clip to smooth circle
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Conic gradient for hue (clockwise from right = red)
+  const conic = ctx.createConicGradient(0, cx, cy);
+  for (let i = 0; i <= 12; i++) {
+    const t = i / 12;
+    const [rr, gg, bb] = cgHslToRgb(t, 1, 0.5);
+    conic.addColorStop(t, `rgb(${rr},${gg},${bb})`);
   }
-  ctx.putImageData(img, 0, 0);
+  ctx.fillStyle = conic;
+  ctx.fillRect(0, 0, S, S);
+
+  // Radial gradient: white center → transparent edge (creates saturation effect)
+  const radial = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  radial.addColorStop(0, 'rgba(255,255,255,1)');
+  radial.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = radial;
+  ctx.fillRect(0, 0, S, S);
+
+  ctx.restore();
+
+  // Subtle border
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = dpr;
+  ctx.beginPath(); ctx.arc(cx, cy, r - dpr * 0.5, 0, Math.PI * 2); ctx.stroke();
 
   // Indicator dot
   const angle = (hue / 360) * Math.PI * 2;
   const dotX = cx + Math.cos(angle) * sat * r;
   const dotY = cy + Math.sin(angle) * sat * r;
-  ctx.fillStyle = sat > 0.5 ? '#fff' : '#000';
-  ctx.strokeStyle = sat > 0.5 ? '#000' : '#fff';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(dotX, dotY, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  const dotR = 4.5 * dpr;
+  ctx.fillStyle = sat > 0.55 ? '#fff' : '#222';
+  ctx.strokeStyle = sat > 0.55 ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)';
+  ctx.lineWidth = 1.5 * dpr;
+  ctx.beginPath(); ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 }
 
 function renderColorGradePanel(layer, filter) {
@@ -528,13 +549,11 @@ function renderColorGradePanel(layer, filter) {
     wrap.className = 'cg-zone';
 
     const cvs = document.createElement('canvas');
-    cvs.width = 64; cvs.height = 64;
     cvs.className = 'cg-wheel';
 
     const getHue = () => layer.params[hueId] ?? filter.params.find((p) => p.id === hueId).default;
     const getSat = () => layer.params[satId] ?? filter.params.find((p) => p.id === satId).default;
     const redraw = () => drawColorWheel(cvs, getHue(), getSat());
-    redraw();
 
     cvs.addEventListener('mousedown', (e) => {
       function update(ev) {
@@ -543,8 +562,8 @@ function renderColorGradePanel(layer, filter) {
         const dx = ev.clientX - rect.left - rect.width / 2;
         const dy = ev.clientY - rect.top - rect.height / 2;
         layer.params[hueId] = ((Math.atan2(dy, dx) / (Math.PI * 2)) * 360 + 360) % 360;
-        layer.params[satId] = Math.min(1, Math.sqrt(dx*dx + dy*dy) / r);
-        redraw(); applyChain();
+        layer.params[satId] = Math.min(1, Math.sqrt(dx * dx + dy * dy) / r);
+        requestAnimationFrame(redraw); applyChain();
       }
       update(e);
       const onMove = (ev) => update(ev);
@@ -564,6 +583,7 @@ function renderColorGradePanel(layer, filter) {
     wrap.appendChild(cvs);
     wrap.appendChild(lbl);
     wheelsRow.appendChild(wrap);
+    requestAnimationFrame(redraw); // draw after layout so offsetWidth is available
   });
 
   paramPanel.appendChild(wheelsRow);
