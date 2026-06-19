@@ -82,6 +82,10 @@ const emptyHint = document.getElementById('empty-hint');
 const uploadName = document.getElementById('upload-name');
 const presetList = document.getElementById('preset-list');
 const btnSavePreset = document.getElementById('btn-save-preset');
+const btnSaveProject = document.getElementById('btn-save-project');
+const btnOpenProject = document.getElementById('btn-open-project');
+const projectInput = document.getElementById('project-input');
+let currentFileName = 'project';
 
 // ── WASM init ──────────────────────────────────────────────────────────────
 getWasm()
@@ -92,8 +96,19 @@ getWasm()
 uploadZone.addEventListener('click', () => fileInput.click());
 uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
 uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-uploadZone.addEventListener('drop', (e) => { e.preventDefault(); uploadZone.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
-fileInput.addEventListener('change', () => { handleFile(fileInput.files[0]); fileInput.value = ''; });
+uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault(); uploadZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (!f) return;
+  if (f.name.endsWith('.lrh') || f.type === 'application/json') loadProject(f);
+  else handleFile(f);
+});
+fileInput.addEventListener('change', () => {
+  const f = fileInput.files[0];
+  if (f?.name.endsWith('.lrh')) loadProject(f);
+  else handleFile(f);
+  fileInput.value = '';
+});
 
 function handleFile(file) {
   if (!file) return;
@@ -101,6 +116,7 @@ function handleFile(file) {
   if (file.size > 20 * 1024 * 1024) { alert('Max image size is 20MB'); return; }
 
   uploadName.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+  currentFileName = file.name.replace(/\.[^.]+$/, '');
 
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -127,6 +143,7 @@ function handleFile(file) {
       sidebarControls.style.display = 'block';
       rightPanel.style.display = 'flex';
       rightPanel.style.flexDirection = 'column';
+      btnSaveProject.disabled = false;
       resetView();
       renderChainUI();
       updateView();
@@ -959,6 +976,85 @@ btnClearChain.addEventListener('click', () => {
   renderChainUI();
   applyChain();
 });
+
+// ── Project save / load ────────────────────────────────────────────────────
+btnSaveProject.addEventListener('click', saveProject);
+btnOpenProject.addEventListener('click', () => projectInput.click());
+projectInput.addEventListener('change', () => {
+  if (projectInput.files[0]) loadProject(projectInput.files[0]);
+  projectInput.value = '';
+});
+
+function saveProject() {
+  if (!hasImage) return;
+  const imageDataUrl = originalCanvas.toDataURL('image/jpeg', 0.92);
+  const project = {
+    version: 1,
+    name: currentFileName,
+    image: { name: currentFileName, dataUrl: imageDataUrl },
+    filterChain: JSON.parse(JSON.stringify(filterChain)),
+  };
+  const blob = new Blob([JSON.stringify(project)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${currentFileName}.lrh`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function loadProject(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    let project;
+    try {
+      project = JSON.parse(e.target.result);
+    } catch {
+      alert('Invalid project file.');
+      return;
+    }
+    if (!project.version || !project.image?.dataUrl || !Array.isArray(project.filterChain)) {
+      alert('Unrecognized project format.');
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      const w = img.width, h = img.height;
+      [originalCanvas, outputCanvas, splitOrigCanvas, splitOutCanvas].forEach((c) => { c.width = w; c.height = h; });
+      originalCanvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      outputCanvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      splitOrigCanvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      splitOutCanvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      syncSplitSize(w, h);
+
+      currentFileName = project.name || 'project';
+      uploadName.textContent = `${currentFileName}.lrh`;
+
+      // Restore only layers whose filter still exists
+      const knownIds = new Set(FILTERS.map((f) => f.id));
+      filterChain = project.filterChain.filter((l) => {
+        if (!knownIds.has(l.filterId)) { console.warn(`Skipping unknown filter: ${l.filterId}`); return false; }
+        return true;
+      });
+      nextUid = Math.max(1, ...filterChain.map((l) => (l.uid || 0) + 1));
+      selectedLayerUid = null;
+
+      hasImage = true;
+      statsBar.innerHTML = '';
+      emptyHint.style.display = 'none';
+      sidebarControls.style.display = 'block';
+      rightPanel.style.display = 'flex';
+      rightPanel.style.flexDirection = 'column';
+      btnSaveProject.disabled = false;
+      resetView();
+      renderChainUI();
+      applyChain();
+    };
+    img.onerror = () => alert('Could not load image from project file.');
+    img.src = project.image.dataUrl;
+  };
+  reader.readAsText(file);
+}
 
 function doReset() {
   filterChain = [];
