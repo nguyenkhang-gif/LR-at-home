@@ -283,6 +283,145 @@ pub fn grain(data: &mut [u8], amount: f32) {
     }
 }
 
+// Temperature: value -1.0 (cool/blue) to 1.0 (warm/yellow)
+#[wasm_bindgen]
+pub fn temperature(data: &mut [u8], value: f32) {
+    let v = value.clamp(-1.0, 1.0) * 60.0;
+    for px in data.chunks_mut(4) {
+        px[0] = (px[0] as f32 + v).clamp(0.0, 255.0) as u8;
+        px[2] = (px[2] as f32 - v).clamp(0.0, 255.0) as u8;
+    }
+}
+
+// Tint: value -1.0 (green) to 1.0 (magenta)
+#[wasm_bindgen]
+pub fn tint(data: &mut [u8], value: f32) {
+    let v = value.clamp(-1.0, 1.0) * 40.0;
+    for px in data.chunks_mut(4) {
+        px[1] = (px[1] as f32 - v).clamp(0.0, 255.0) as u8;
+        px[0] = (px[0] as f32 + v * 0.3).clamp(0.0, 255.0) as u8;
+        px[2] = (px[2] as f32 + v * 0.3).clamp(0.0, 255.0) as u8;
+    }
+}
+
+// Clarity: local contrast in midtones. amount -1.0 to 1.0
+#[wasm_bindgen]
+pub fn clarity(data: &mut [u8], width: u32, height: u32, amount: f32) {
+    let w = width as usize;
+    let h = height as usize;
+    let a = amount.clamp(-1.0, 1.0);
+    let blurred = box_blur_copy(data, w, h, 5);
+    for (i, px) in data.chunks_mut(4).enumerate() {
+        let lum = luma(px[0], px[1], px[2]) / 255.0;
+        let mid_w = 4.0 * lum * (1.0 - lum);
+        let blend = a * mid_w;
+        for c in 0..3 {
+            let orig = px[c] as f32;
+            let blr = blurred[i * 4 + c] as f32;
+            px[c] = (orig + blend * (orig - blr)).clamp(0.0, 255.0) as u8;
+        }
+    }
+}
+
+// Dehaze: positive removes haze, negative adds haze/fog
+#[wasm_bindgen]
+pub fn dehaze(data: &mut [u8], amount: f32) {
+    let a = amount.clamp(-1.0, 1.0);
+    for px in data.chunks_mut(4) {
+        for c in 0..3 {
+            let v = px[c] as f32 / 255.0;
+            let result = if a >= 0.0 {
+                v.powf(1.0 + a * 0.8)
+            } else {
+                v + (-a) * 0.4 * (1.0 - v)
+            };
+            px[c] = (result.clamp(0.0, 1.0) * 255.0) as u8;
+        }
+    }
+}
+
+// HSL per-color: 8 ranges (R/O/Y/G/Aqua/B/P/M), each with hue shift (deg), sat delta (-100..100), lum delta (-100..100)
+#[wasm_bindgen]
+#[allow(clippy::too_many_arguments)]
+pub fn hsl_adjust(data: &mut [u8],
+    r_h: f32, r_s: f32, r_l: f32,
+    o_h: f32, o_s: f32, o_l: f32,
+    y_h: f32, y_s: f32, y_l: f32,
+    g_h: f32, g_s: f32, g_l: f32,
+    a_h: f32, a_s: f32, a_l: f32,
+    b_h: f32, b_s: f32, b_l: f32,
+    p_h: f32, p_s: f32, p_l: f32,
+    m_h: f32, m_s: f32, m_l: f32,
+) {
+    const CENTERS: [f32; 8] = [
+        0.0/360.0, 30.0/360.0, 60.0/360.0, 120.0/360.0,
+        180.0/360.0, 240.0/360.0, 270.0/360.0, 315.0/360.0,
+    ];
+    let hd = [r_h/360.0, o_h/360.0, y_h/360.0, g_h/360.0, a_h/360.0, b_h/360.0, p_h/360.0, m_h/360.0];
+    let sd = [r_s/100.0, o_s/100.0, y_s/100.0, g_s/100.0, a_s/100.0, b_s/100.0, p_s/100.0, m_s/100.0];
+    let ld = [r_l/100.0, o_l/100.0, y_l/100.0, g_l/100.0, a_l/100.0, b_l/100.0, p_l/100.0, m_l/100.0];
+
+    for px in data.chunks_mut(4) {
+        let (h, s, l) = rgb_to_hsl(px[0], px[1], px[2]);
+        let mut dh = 0.0f32;
+        let mut ds = 0.0f32;
+        let mut dl = 0.0f32;
+        for i in 0..8 {
+            let mut diff = (h - CENTERS[i]).abs();
+            if diff > 0.5 { diff = 1.0 - diff; }
+            let range = 1.0 / 8.0;
+            if diff < range {
+                let w = (1.0 - diff / range) * s; // weight by saturation so gray pixels unaffected
+                dh += w * hd[i];
+                ds += w * sd[i];
+                dl += w * ld[i];
+            }
+        }
+        let (r, g, b) = hsl_to_rgb(
+            (h + dh).rem_euclid(1.0),
+            (s + ds).clamp(0.0, 1.0),
+            (l + dl).clamp(0.0, 1.0),
+        );
+        px[0] = r; px[1] = g; px[2] = b;
+    }
+}
+
+fn box_blur_copy(data: &[u8], w: usize, h: usize, radius: usize) -> Vec<u8> {
+    let mut tmp = data.to_vec();
+    let mut out = data.to_vec();
+    // horizontal
+    for y in 0..h {
+        for x in 0..w {
+            let x0 = x.saturating_sub(radius);
+            let x1 = (x + radius).min(w - 1);
+            let n = (x1 - x0 + 1) as f32;
+            let (mut r, mut g, mut b) = (0.0f32, 0.0f32, 0.0f32);
+            for xx in x0..=x1 {
+                let idx = (y * w + xx) * 4;
+                r += data[idx] as f32; g += data[idx+1] as f32; b += data[idx+2] as f32;
+            }
+            let idx = (y * w + x) * 4;
+            tmp[idx] = (r/n) as u8; tmp[idx+1] = (g/n) as u8; tmp[idx+2] = (b/n) as u8;
+        }
+    }
+    // vertical
+    for y in 0..h {
+        for x in 0..w {
+            let y0 = y.saturating_sub(radius);
+            let y1 = (y + radius).min(h - 1);
+            let n = (y1 - y0 + 1) as f32;
+            let (mut r, mut g, mut b) = (0.0f32, 0.0f32, 0.0f32);
+            for yy in y0..=y1 {
+                let idx = (yy * w + x) * 4;
+                r += tmp[idx] as f32; g += tmp[idx+1] as f32; b += tmp[idx+2] as f32;
+            }
+            let idx = (y * w + x) * 4;
+            out[idx] = (r/n) as u8; out[idx+1] = (g/n) as u8; out[idx+2] = (b/n) as u8;
+        }
+    }
+    out
+}
+
 // Color grade: tint shadows/midtones/highlights with independent hue+saturation
 // shadow_hue/mid_hue/hi_hue: 0–360; shadow_sat/mid_sat/hi_sat: 0–1
 #[wasm_bindgen]
