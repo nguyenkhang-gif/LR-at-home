@@ -1056,6 +1056,14 @@ function loadProject(file) {
   reader.readAsText(file);
 }
 
+// ── Unsaved-changes guard ──────────────────────────────────────────────────
+window.addEventListener('beforeunload', (e) => {
+  if (hasImage && filterChain.length > 0) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
 function doReset() {
   filterChain = [];
   selectedLayerUid = null;
