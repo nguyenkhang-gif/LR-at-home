@@ -1,6 +1,6 @@
 import { getWasm } from './wasmLoader.js';
 import { FILTERS, FILTER_GROUPS } from './filters.js';
-import { BUILTIN_PRESETS, loadUserPresets, saveUserPreset, deleteUserPreset, exportPresets, importPresets } from './presets.js';
+import { BUILTIN_PRESETS, PRESET_GROUPS, loadUserPresets, saveUserPreset, deleteUserPreset, exportPresets, importPresets } from './presets.js';
 
 // ── State ──────────────────────────────────────────────────────────────────
 let wasm = null;
@@ -574,48 +574,57 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ── Presets ────────────────────────────────────────────────────────────────
+function makePresetItem(preset) {
+  const item = document.createElement('div');
+  item.className = 'preset-item' + (preset.builtin ? ' builtin' : '');
+  item.innerHTML = `
+    <span class="preset-dot"></span>
+    <span class="preset-name">${preset.name}</span>
+    <span class="preset-layers">${preset.chain.length}</span>
+    ${!preset.builtin ? `<button class="preset-delete" title="Xóa">×</button>` : ''}
+  `;
+  item.addEventListener('click', (e) => {
+    if (e.target.classList.contains('preset-delete')) return;
+    if (!hasImage) return;
+    snapshot();
+    filterChain = preset.chain.map(({ filterId, params }) => ({
+      uid: nextUid++, filterId, params: { ...params }, visible: true, opacity: 1,
+    }));
+    selectedLayerUid = filterChain.length > 0 ? filterChain[filterChain.length - 1].uid : null;
+    renderChainUI();
+    applyChain();
+  });
+  if (!preset.builtin) {
+    item.querySelector('.preset-delete').addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteUserPreset(preset.id);
+      renderPresets();
+    });
+  }
+  return item;
+}
+
 function renderPresets() {
   presetList.innerHTML = '';
-  const allPresets = [
-    ...BUILTIN_PRESETS.map((p) => ({ ...p, builtin: true })),
-    ...loadUserPresets().map((p) => ({ ...p, builtin: false })),
-  ];
+  const builtinMap = Object.fromEntries(BUILTIN_PRESETS.map((p) => [p.id, p]));
 
-  for (const preset of allPresets) {
-    const item = document.createElement('div');
-    item.className = 'preset-item' + (preset.builtin ? ' builtin' : '');
-    item.innerHTML = `
-      <span class="preset-dot"></span>
-      <span class="preset-name">${preset.name}</span>
-      <span class="preset-layers">${preset.chain.length} layer${preset.chain.length > 1 ? 's' : ''}</span>
-      ${!preset.builtin ? `<button class="preset-delete" data-id="${preset.id}" title="Xóa preset">×</button>` : ''}
-    `;
-
-    item.addEventListener('click', (e) => {
-      if (e.target.classList.contains('preset-delete')) return;
-      if (!hasImage) return;
-      snapshot();
-      filterChain = preset.chain.map(({ filterId, params }) => ({
-        uid: nextUid++,
-        filterId,
-        params: { ...params },
-        visible: true,
-        opacity: 1,
-      }));
-      selectedLayerUid = filterChain.length > 0 ? filterChain[filterChain.length - 1].uid : null;
-      renderChainUI();
-      applyChain();
-    });
-
-    if (!preset.builtin) {
-      item.querySelector('.preset-delete').addEventListener('click', (e) => {
-        e.stopPropagation();
-        deleteUserPreset(preset.id);
-        renderPresets();
-      });
+  for (const group of PRESET_GROUPS) {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'preset-group';
+    groupEl.innerHTML = `<p class="preset-group-label">${group.label}</p>`;
+    for (const id of group.ids) {
+      if (builtinMap[id]) groupEl.appendChild(makePresetItem({ ...builtinMap[id], builtin: true }));
     }
+    presetList.appendChild(groupEl);
+  }
 
-    presetList.appendChild(item);
+  const userPresets = loadUserPresets();
+  if (userPresets.length > 0) {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'preset-group';
+    groupEl.innerHTML = `<p class="preset-group-label">Của tôi</p>`;
+    userPresets.forEach((p) => groupEl.appendChild(makePresetItem({ ...p, builtin: false })));
+    presetList.appendChild(groupEl);
   }
 }
 
@@ -731,6 +740,33 @@ function toggleKeybind() {
 btnKeybind.addEventListener('click', toggleKeybind);
 btnKbClose.addEventListener('click', toggleKeybind);
 keybindOverlay.addEventListener('click', (e) => { if (e.target === keybindOverlay) toggleKeybind(); });
+
+// ── Collapsible sections ───────────────────────────────────────────────────
+const LS_COLLAPSE = 'lah_collapsed_v1';
+
+function getCollapsed() {
+  try { return JSON.parse(localStorage.getItem(LS_COLLAPSE) || '{}'); } catch { return {}; }
+}
+
+function initCollapsible() {
+  const collapsed = getCollapsed();
+  document.querySelectorAll('.section.collapsible').forEach((section) => {
+    const key = section.dataset.section;
+    if (!key) return;
+    if (collapsed[key]) section.classList.add('collapsed');
+
+    const header = section.querySelector('.section-header');
+    header.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      section.classList.toggle('collapsed');
+      const state = getCollapsed();
+      state[key] = section.classList.contains('collapsed');
+      localStorage.setItem(LS_COLLAPSE, JSON.stringify(state));
+    });
+  });
+}
+
+initCollapsible();
 
 // ── Mobile panel toggle ────────────────────────────────────────────────────
 const btnMobilePanel = document.getElementById('btn-mobile-panel');

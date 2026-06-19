@@ -1,6 +1,15 @@
 const LS_KEY = 'lah_presets_v1';
 
+export const PRESET_GROUPS = [
+  { label: 'Film & Classic', ids: ['vintage', 'matte_film', 'kodak'] },
+  { label: 'B&W', ids: ['bw_drama', 'bw_soft'] },
+  { label: 'Cinematic', ids: ['teal_orange', 'cold_blue', 'moody_dark'] },
+  { label: 'Bright & Airy', ids: ['summer', 'sharp_pop'] },
+  { label: 'Artistic', ids: ['edge_art', 'lo_fi', 'faded'] },
+];
+
 export const BUILTIN_PRESETS = [
+  // ── Film & Classic ──
   {
     id: 'vintage',
     name: 'Vintage',
@@ -8,8 +17,32 @@ export const BUILTIN_PRESETS = [
       { filterId: 'sepia', params: { intensity: 0.75 } },
       { filterId: 'brightness', params: { value: -15 } },
       { filterId: 'contrast', params: { factor: 1.15 } },
+      { filterId: 'vignette', params: { strength: 0.5 } },
     ],
   },
+  {
+    id: 'matte_film',
+    name: 'Matte Film',
+    chain: [
+      { filterId: 'contrast', params: { factor: 0.85 } },
+      { filterId: 'blacks', params: { value: 0.4 } },
+      { filterId: 'highlights', params: { value: -0.3 } },
+      { filterId: 'grain', params: { amount: 0.15 } },
+    ],
+  },
+  {
+    id: 'kodak',
+    name: 'Kodak',
+    chain: [
+      { filterId: 'brightness', params: { value: 10 } },
+      { filterId: 'contrast', params: { factor: 1.1 } },
+      { filterId: 'saturation', params: { factor: 1.3 } },
+      { filterId: 'highlights', params: { value: -0.15 } },
+      { filterId: 'shadows', params: { value: 0.1 } },
+      { filterId: 'grain', params: { amount: 0.08 } },
+    ],
+  },
+  // ── B&W ──
   {
     id: 'bw_drama',
     name: 'B&W Drama',
@@ -17,6 +50,28 @@ export const BUILTIN_PRESETS = [
       { filterId: 'grayscale', params: { intensity: 1 } },
       { filterId: 'contrast', params: { factor: 1.6 } },
       { filterId: 'brightness', params: { value: -20 } },
+      { filterId: 'vignette', params: { strength: 0.6 } },
+    ],
+  },
+  {
+    id: 'bw_soft',
+    name: 'B&W Soft',
+    chain: [
+      { filterId: 'grayscale', params: { intensity: 1 } },
+      { filterId: 'brightness', params: { value: 20 } },
+      { filterId: 'contrast', params: { factor: 0.9 } },
+      { filterId: 'box_blur', params: { radius: 1 } },
+    ],
+  },
+  // ── Cinematic ──
+  {
+    id: 'teal_orange',
+    name: 'Teal & Orange',
+    chain: [
+      { filterId: 'hue_rotate', params: { degrees: 15 } },
+      { filterId: 'saturation', params: { factor: 1.4 } },
+      { filterId: 'contrast', params: { factor: 1.15 } },
+      { filterId: 'vignette', params: { strength: 0.4 } },
     ],
   },
   {
@@ -25,6 +80,29 @@ export const BUILTIN_PRESETS = [
     chain: [
       { filterId: 'hue_rotate', params: { degrees: 200 } },
       { filterId: 'contrast', params: { factor: 1.1 } },
+      { filterId: 'shadows', params: { value: -0.15 } },
+    ],
+  },
+  {
+    id: 'moody_dark',
+    name: 'Moody Dark',
+    chain: [
+      { filterId: 'exposure', params: { stops: -0.7 } },
+      { filterId: 'contrast', params: { factor: 1.4 } },
+      { filterId: 'highlights', params: { value: -0.5 } },
+      { filterId: 'saturation', params: { factor: 0.8 } },
+      { filterId: 'vignette', params: { strength: 0.7 } },
+    ],
+  },
+  // ── Bright & Airy ──
+  {
+    id: 'summer',
+    name: 'Summer',
+    chain: [
+      { filterId: 'exposure', params: { stops: 0.4 } },
+      { filterId: 'highlights', params: { value: -0.2 } },
+      { filterId: 'saturation', params: { factor: 1.5 } },
+      { filterId: 'brightness', params: { value: 10 } },
     ],
   },
   {
@@ -34,14 +112,36 @@ export const BUILTIN_PRESETS = [
       { filterId: 'sharpen', params: { amount: 2 } },
       { filterId: 'contrast', params: { factor: 1.3 } },
       { filterId: 'brightness', params: { value: 15 } },
+      { filterId: 'saturation', params: { factor: 1.2 } },
     ],
   },
+  // ── Artistic ──
   {
     id: 'edge_art',
     name: 'Edge Art',
     chain: [
       { filterId: 'edge_detect', params: { sensitivity: 1.5 } },
       { filterId: 'invert', params: { intensity: 1 } },
+    ],
+  },
+  {
+    id: 'lo_fi',
+    name: 'Lo-Fi',
+    chain: [
+      { filterId: 'contrast', params: { factor: 1.5 } },
+      { filterId: 'saturation', params: { factor: 1.8 } },
+      { filterId: 'vignette', params: { strength: 0.8 } },
+      { filterId: 'grain', params: { amount: 0.25 } },
+    ],
+  },
+  {
+    id: 'faded',
+    name: 'Faded',
+    chain: [
+      { filterId: 'blacks', params: { value: 0.5 } },
+      { filterId: 'whites', params: { value: -0.3 } },
+      { filterId: 'saturation', params: { factor: 0.7 } },
+      { filterId: 'sepia', params: { intensity: 0.15 } },
     ],
   },
 ];
