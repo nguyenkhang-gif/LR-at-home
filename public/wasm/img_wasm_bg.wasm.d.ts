@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
+export const apply_lut: (a: number, b: number, c: any, d: number, e: number) => void;
 export const blacks: (a: number, b: number, c: any, d: number) => void;
 export const box_blur: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
 export const brightness: (a: number, b: number, c: any, d: number) => void;

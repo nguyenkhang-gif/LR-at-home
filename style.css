@@ -331,6 +331,16 @@ select {
 }
 .hsl-color-btn.active .hsl-color-tick { background: var(--accent); }
 
+/* ── Tone Curve ── */
+.tone-curve-canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  cursor: crosshair;
+  touch-action: none;
+}
+
 /* ── Right panel ── */
 .right-panel {
   width: 240px; flex-shrink: 0; border-left: 1px solid var(--border);

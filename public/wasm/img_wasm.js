@@ -2,6 +2,18 @@
 
 /**
  * @param {Uint8Array} data
+ * @param {Uint8Array} lut
+ */
+export function apply_lut(data, lut) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(lut, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    wasm.apply_lut(ptr0, len0, data, ptr1, len1);
+}
+
+/**
+ * @param {Uint8Array} data
  * @param {number} value
  */
 export function blacks(data, value) {

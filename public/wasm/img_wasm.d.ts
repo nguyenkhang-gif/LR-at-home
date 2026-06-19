@@ -1,6 +1,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
+export function apply_lut(data: Uint8Array, lut: Uint8Array): void;
+
 export function blacks(data: Uint8Array, value: number): void;
 
 export function box_blur(data: Uint8Array, width: number, height: number, radius: number): void;
@@ -53,6 +55,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
+    readonly apply_lut: (a: number, b: number, c: any, d: number, e: number) => void;
     readonly blacks: (a: number, b: number, c: any, d: number) => void;
     readonly box_blur: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
     readonly brightness: (a: number, b: number, c: any, d: number) => void;

@@ -1,10 +1,35 @@
 export const FILTER_GROUPS = [
-  { label: 'Light', ids: ['exposure', 'highlights', 'shadows', 'whites', 'blacks', 'brightness', 'contrast'] },
+  { label: 'Light', ids: ['exposure', 'highlights', 'shadows', 'whites', 'blacks', 'brightness', 'contrast', 'tone_curve'] },
   { label: 'Color', ids: ['temperature', 'tint', 'saturation', 'hue_rotate', 'color_grade', 'hsl_adjust'] },
   { label: 'Presence', ids: ['clarity', 'dehaze', 'sharpen', 'box_blur'] },
   { label: 'Creative', ids: ['grayscale', 'sepia', 'invert', 'vignette', 'grain'] },
   { label: 'Artistic', ids: ['edge_detect', 'threshold'] },
 ];
+
+// Catmull-Rom spline through (input→output) control points, returns 256-byte LUT
+export function buildCurveLut(pts) {
+  const lut = new Uint8Array(256);
+  const n = pts.length;
+  if (n === 0) { for (let i = 0; i < 256; i++) lut[i] = i; return lut; }
+  const xs = pts.map((p) => p[0]);
+  const ys = pts.map((p) => p[1]);
+  for (let x = 0; x <= 255; x++) {
+    let i = 1;
+    while (i < n - 1 && xs[i] <= x) i++;
+    const x0 = xs[i - 1], x1 = xs[i];
+    const t = x1 === x0 ? 0 : (x - x0) / (x1 - x0);
+    const y0 = ys[i - 1], y1 = ys[i];
+    const ym1 = i > 1 ? ys[i - 2] : y0;
+    const y2  = i < n - 1 ? ys[i + 1] : y1;
+    const val = 0.5 * (
+      2 * y0 + (-ym1 + y1) * t +
+      (2 * ym1 - 5 * y0 + 4 * y1 - y2) * t * t +
+      (-ym1 + 3 * y0 - 3 * y1 + y2) * t * t * t
+    );
+    lut[x] = Math.round(Math.max(0, Math.min(255, val)));
+  }
+  return lut;
+}
 
 export const FILTERS = [
   {
@@ -156,6 +181,22 @@ export const FILTERS = [
       p.p_h, p.p_s, p.p_l,
       p.m_h, p.m_s, p.m_l,
     ),
+  },
+  {
+    id: 'tone_curve', name: 'Tone Curve',
+    params: [
+      { id: 'p0', label: 'Blacks',   min: 0, max: 255, default: 0,   step: 1 },
+      { id: 'p1', label: 'Shadows',  min: 0, max: 255, default: 64,  step: 1 },
+      { id: 'p2', label: 'Midtones', min: 0, max: 255, default: 128, step: 1 },
+      { id: 'p3', label: 'Lights',   min: 0, max: 255, default: 192, step: 1 },
+      { id: 'p4', label: 'Whites',   min: 0, max: 255, default: 255, step: 1 },
+    ],
+    apply: (wasm, data, p) => {
+      const lut = buildCurveLut([
+        [0, p.p0], [64, p.p1], [128, p.p2], [192, p.p3], [255, p.p4],
+      ]);
+      wasm.apply_lut(data.data, lut);
+    },
   },
   {
     id: 'color_grade', name: 'Color Grading',

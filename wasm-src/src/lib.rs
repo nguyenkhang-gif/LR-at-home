@@ -386,6 +386,17 @@ pub fn hsl_adjust(data: &mut [u8],
     }
 }
 
+// Apply a 256-entry LUT to each RGB channel (identical LUT for all 3)
+#[wasm_bindgen]
+pub fn apply_lut(data: &mut [u8], lut: &[u8]) {
+    if lut.len() < 256 { return; }
+    for px in data.chunks_mut(4) {
+        px[0] = lut[px[0] as usize];
+        px[1] = lut[px[1] as usize];
+        px[2] = lut[px[2] as usize];
+    }
+}
+
 fn box_blur_copy(data: &[u8], w: usize, h: usize, radius: usize) -> Vec<u8> {
     let mut tmp = data.to_vec();
     let mut out = data.to_vec();

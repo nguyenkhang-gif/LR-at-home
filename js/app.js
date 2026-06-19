@@ -1,5 +1,5 @@
 import { getWasm } from './wasmLoader.js';
-import { FILTERS, FILTER_GROUPS } from './filters.js';
+import { FILTERS, FILTER_GROUPS, buildCurveLut } from './filters.js';
 import { BUILTIN_PRESETS, PRESET_GROUPS, loadUserPresets, saveUserPreset, deleteUserPreset, exportPresets, importPresets } from './presets.js';
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -387,6 +387,8 @@ function renderParamPanel() {
 
   if (filter.id === 'hsl_adjust') {
     renderHslPanel(layer, filter);
+  } else if (filter.id === 'tone_curve') {
+    renderToneCurvePanel(layer, filter);
   } else {
     for (const p of filter.params) {
       paramPanel.appendChild(makeParamRow({
@@ -461,6 +463,98 @@ function renderHslPanel(layer, filter) {
   }
 }
 
+const CURVE_INPUT_X = [0, 64, 128, 192, 255];
+const CURVE_PARAM_IDS = ['p0', 'p1', 'p2', 'p3', 'p4'];
+
+function renderToneCurvePanel(layer, filter) {
+  const W = 180, H = 180;
+  const cvs = document.createElement('canvas');
+  cvs.className = 'tone-curve-canvas';
+  cvs.width = W;
+  cvs.height = H;
+  paramPanel.appendChild(cvs);
+
+  const ctx = cvs.getContext('2d');
+  let dragging = null;
+
+  function getY(id) { return layer.params[id] ?? filter.params.find((p) => p.id === id).default; }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0d0d14';
+    ctx.fillRect(0, 0, W, H);
+
+    // Grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      ctx.beginPath(); ctx.moveTo(i * W / 4, 0); ctx.lineTo(i * W / 4, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * H / 4); ctx.lineTo(W, i * H / 4); ctx.stroke();
+    }
+
+    // Diagonal (identity line)
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(W, 0); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Curve from LUT
+    const pts = CURVE_PARAM_IDS.map((id, i) => [CURVE_INPUT_X[i], getY(id)]);
+    const lut = buildCurveLut(pts);
+    ctx.strokeStyle = '#7eb8ff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let x = 0; x <= 255; x++) {
+      const px = (x / 255) * W;
+      const py = H - (lut[x] / 255) * H;
+      x === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    // Control point dots
+    pts.forEach(([ix, iy], i) => {
+      const px = (ix / 255) * W;
+      const py = H - (iy / 255) * H;
+      ctx.fillStyle = dragging === i ? '#ffffff' : '#7eb8ff';
+      ctx.strokeStyle = '#0d0d14';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    });
+  }
+
+  function clientToCanvas(e) {
+    const rect = cvs.getBoundingClientRect();
+    return [(e.clientX - rect.left) / rect.width * W, (e.clientY - rect.top) / rect.height * H];
+  }
+
+  cvs.addEventListener('mousedown', (e) => {
+    const [mx, my] = clientToCanvas(e);
+    CURVE_PARAM_IDS.forEach((id, i) => {
+      const px = (CURVE_INPUT_X[i] / 255) * W;
+      const py = H - (getY(id) / 255) * H;
+      if (Math.hypot(mx - px, my - py) < 10) dragging = i;
+    });
+    if (dragging === null) return;
+
+    function onMove(ev) {
+      const [, my2] = clientToCanvas(ev);
+      const newY = Math.round(Math.max(0, Math.min(255, (1 - my2 / H) * 255)));
+      layer.params[CURVE_PARAM_IDS[dragging]] = newY;
+      draw();
+      applyChain();
+    }
+    function onUp() {
+      if (dragging !== null) { snapshot(); dragging = null; draw(); }
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  draw();
+}
+
 function fmt(v, step) { return step < 1 ? Number(v).toFixed(2) : String(Math.round(v)); }
 
 // ── Apply chain ────────────────────────────────────────────────────────────
@@ -503,9 +597,9 @@ function applyChain() {
 
   const mpxs = (src.width * src.height / elapsed / 1000).toFixed(1);
   statsBar.innerHTML = `
-    <div class="stat-card"><span class="stat-label">Thời gian</span><span class="stat-value">${elapsed.toFixed(1)}ms</span></div>
-    <div class="stat-card"><span class="stat-label">Kích thước</span><span class="stat-value">${src.width}×${src.height} px</span></div>
-    <div class="stat-card"><span class="stat-label">Tốc độ</span><span class="stat-value">${mpxs} Mpx/s</span></div>
+    <div class="stat-card"><span class="stat-label">Time</span><span class="stat-value">${elapsed.toFixed(1)}ms</span></div>
+    <div class="stat-card"><span class="stat-label">Size</span><span class="stat-value">${src.width}×${src.height} px</span></div>
+    <div class="stat-card"><span class="stat-label">Speed</span><span class="stat-value">${mpxs} Mpx/s</span></div>
     <div class="stat-card"><span class="stat-label">Layers</span><span class="stat-value">${filterChain.length}</span></div>
   `;
 }
