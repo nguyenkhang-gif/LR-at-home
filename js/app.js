@@ -127,6 +127,7 @@ function handleFile(file) {
       sidebarControls.style.display = 'block';
       rightPanel.style.display = 'flex';
       rightPanel.style.flexDirection = 'column';
+      resetView();
       renderChainUI();
       updateView();
     };
@@ -571,7 +572,7 @@ function renderColorGradePanel(layer, filter) {
   CG_ZONES.forEach(({ label, lumId }) => {
     const p = filter.params.find((x) => x.id === lumId);
     paramPanel.appendChild(makeParamRow({
-      label: label.slice(0, 3) + ' Lum',
+      label: label + ' Lum',
       min: p.min, max: p.max, step: p.step,
       value: layer.params[lumId] ?? p.default,
       display: (v) => fmt(v, p.step),
@@ -827,6 +828,12 @@ document.addEventListener('keydown', (e) => {
       renderParamPanel();
       renderLayerListHighlight();
       break;
+    case '+': case '=':
+      if (hasImage) { viewZoom = Math.min(10, viewZoom * 1.25); applyViewTransform(); }
+      break;
+    case '-':
+      if (hasImage) { viewZoom = Math.max(0.1, viewZoom / 1.25); applyViewTransform(); }
+      break;
     case 'r': case 'R':
       doReset();
       break;
@@ -1069,3 +1076,68 @@ document.addEventListener('touchmove', (e) => {
   splitX = Math.max(5, Math.min(95, ((e.touches[0].clientX - rect.left) / rect.width) * 100));
   applySplitX();
 }, { passive: true });
+
+// ── Canvas zoom / pan ──────────────────────────────────────────────────────
+let viewZoom = 1, viewPanX = 0, viewPanY = 0;
+let isPanning = false, panStartX = 0, panStartY = 0, panOriginX = 0, panOriginY = 0;
+
+const canvasWrapper = document.querySelector('.canvas-wrapper');
+const zoomBadge = document.getElementById('zoom-badge');
+let zoomFadeTimer = null;
+
+function applyViewTransform() {
+  bothGrid.style.transformOrigin = 'center center';
+  bothGrid.style.transform = `translate(${viewPanX}px, ${viewPanY}px) scale(${viewZoom})`;
+  zoomBadge.textContent = Math.round(viewZoom * 100) + '%';
+  zoomBadge.classList.add('visible');
+  clearTimeout(zoomFadeTimer);
+  zoomFadeTimer = setTimeout(() => zoomBadge.classList.remove('visible'), 1200);
+}
+
+function resetView() {
+  viewZoom = 1; viewPanX = 0; viewPanY = 0;
+  bothGrid.style.transform = '';
+  zoomBadge.classList.remove('visible');
+}
+
+// Scroll wheel → zoom centered on cursor
+canvasWrapper.addEventListener('wheel', (e) => {
+  if (!hasImage || showSplit) return;
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+  const newZoom = Math.max(0.1, Math.min(10, viewZoom * factor));
+
+  // Keep point under cursor fixed
+  const rect = canvasWrapper.getBoundingClientRect();
+  const mx = e.clientX - rect.left - rect.width / 2;
+  const my = e.clientY - rect.top - rect.height / 2;
+  viewPanX = mx + (viewPanX - mx) * (newZoom / viewZoom);
+  viewPanY = my + (viewPanY - my) * (newZoom / viewZoom);
+  viewZoom = newZoom;
+  applyViewTransform();
+}, { passive: false });
+
+// Drag → pan
+canvasWrapper.addEventListener('mousedown', (e) => {
+  if (!hasImage || showSplit || e.target.closest('.split-handle')) return;
+  isPanning = true;
+  panStartX = e.clientX; panStartY = e.clientY;
+  panOriginX = viewPanX; panOriginY = viewPanY;
+  canvasWrapper.style.cursor = 'grabbing';
+  e.preventDefault();
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isPanning) return;
+  viewPanX = panOriginX + (e.clientX - panStartX);
+  viewPanY = panOriginY + (e.clientY - panStartY);
+  applyViewTransform();
+});
+
+document.addEventListener('mouseup', () => {
+  if (isPanning) { isPanning = false; canvasWrapper.style.cursor = ''; }
+});
+
+// Double-click → reset zoom
+canvasWrapper.addEventListener('dblclick', () => { if (hasImage) resetView(); });
+
