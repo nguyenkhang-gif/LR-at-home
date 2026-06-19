@@ -33,7 +33,7 @@
     <aside>
       <!-- Upload -->
       <div class="upload-zone" id="upload-zone">
-        <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" hidden />
+        <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,.lrh" hidden />
         <svg class="upload-icon" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
             d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
@@ -74,6 +74,11 @@
           <button class="btn btn-secondary" id="btn-split">Split View <kbd>S</kbd></button>
           <button class="btn btn-secondary" id="btn-reset">Reset <kbd>R</kbd></button>
           <button class="btn btn-primary" id="btn-download">Download PNG <kbd>D</kbd></button>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-secondary" id="btn-open-project">Open Project</button>
+          <button class="btn btn-secondary" id="btn-save-project" disabled>Save Project</button>
+          <input type="file" id="project-input" accept=".lrh,.json" hidden />
         </div>
       </div>
     </aside>
