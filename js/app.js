@@ -374,7 +374,7 @@ function renderParamPanel() {
 
   // Opacity row (always first)
   paramPanel.appendChild(makeParamRow({
-    label: 'Độ mờ',
+    label: 'Opacity',
     min: 0, max: 100, step: 1,
     value: Math.round((layer.opacity ?? 1) * 100),
     display: (v) => v + '%',
@@ -385,16 +385,75 @@ function renderParamPanel() {
     onCommit: snapshot,
   }));
 
-  for (const p of filter.params) {
+  if (filter.id === 'hsl_adjust') {
+    renderHslPanel(layer, filter);
+  } else {
+    for (const p of filter.params) {
+      paramPanel.appendChild(makeParamRow({
+        label: p.label,
+        min: p.min, max: p.max, step: p.step,
+        value: layer.params[p.id] ?? p.default,
+        display: (v) => fmt(v, p.step),
+        onChange: (v) => {
+          layer.params[p.id] = v;
+          const hint = layerList.querySelector(`[data-uid="${layer.uid}"] .layer-param-hint`);
+          if (hint) hint.textContent = buildParamHint(filter, layer.params);
+          applyChain();
+        },
+        onCommit: snapshot,
+      }));
+    }
+  }
+}
+
+const HSL_COLORS = [
+  { key: 'r', label: 'Red',     color: '#e05555' },
+  { key: 'o', label: 'Orange',  color: '#e08c35' },
+  { key: 'y', label: 'Yellow',  color: '#d4c435' },
+  { key: 'g', label: 'Green',   color: '#4caf50' },
+  { key: 'a', label: 'Aqua',    color: '#26b5b5' },
+  { key: 'b', label: 'Blue',    color: '#4f7fff' },
+  { key: 'p', label: 'Purple',  color: '#9c5ce6' },
+  { key: 'm', label: 'Magenta', color: '#d455a0' },
+];
+
+let hslActiveColor = 'r';
+
+function renderHslPanel(layer, filter) {
+  const colorBar = document.createElement('div');
+  colorBar.className = 'hsl-colors';
+
+  HSL_COLORS.forEach(({ key, label, color }) => {
+    const btn = document.createElement('button');
+    btn.className = 'hsl-color-btn' + (hslActiveColor === key ? ' active' : '');
+    btn.title = label;
+    btn.innerHTML = `
+      <div class="hsl-color-dot" style="background:${color}"></div>
+      <div class="hsl-color-tick"></div>
+    `;
+    btn.addEventListener('click', () => {
+      hslActiveColor = key;
+      renderParamPanel();
+    });
+    colorBar.appendChild(btn);
+  });
+  paramPanel.appendChild(colorBar);
+
+  const { key } = HSL_COLORS.find((c) => c.key === hslActiveColor);
+  const sliders = [
+    { id: `${key}_h`, label: 'Hue',        min: -180, max: 180, step: 1 },
+    { id: `${key}_s`, label: 'Saturation', min: -100, max: 100, step: 1 },
+    { id: `${key}_l`, label: 'Luminance',  min: -100, max: 100, step: 1 },
+  ];
+
+  for (const p of sliders) {
     paramPanel.appendChild(makeParamRow({
       label: p.label,
       min: p.min, max: p.max, step: p.step,
-      value: layer.params[p.id] ?? p.default,
+      value: layer.params[p.id] ?? 0,
       display: (v) => fmt(v, p.step),
       onChange: (v) => {
         layer.params[p.id] = v;
-        const hint = layerList.querySelector(`[data-uid="${layer.uid}"] .layer-param-hint`);
-        if (hint) hint.textContent = buildParamHint(filter, layer.params);
         applyChain();
       },
       onCommit: snapshot,
