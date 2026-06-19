@@ -14,6 +14,42 @@ let filterChain = [];
 let selectedLayerUid = null;
 let nextUid = 1;
 
+// Undo/Redo history
+const MAX_HISTORY = 20;
+let history = [];
+let historyIndex = -1;
+
+function snapshot() {
+  const state = JSON.parse(JSON.stringify(filterChain));
+  history = history.slice(0, historyIndex + 1);
+  history.push(state);
+  if (history.length > MAX_HISTORY) history.shift();
+  historyIndex = history.length - 1;
+}
+
+function undo() {
+  if (historyIndex <= 0) return;
+  historyIndex--;
+  restoreSnapshot();
+}
+
+function redo() {
+  if (historyIndex >= history.length - 1) return;
+  historyIndex++;
+  restoreSnapshot();
+}
+
+function restoreSnapshot() {
+  filterChain = JSON.parse(JSON.stringify(history[historyIndex]));
+  const uids = filterChain.map((l) => l.uid);
+  if (!uids.includes(selectedLayerUid)) {
+    selectedLayerUid = uids.length > 0 ? uids[uids.length - 1] : null;
+  }
+  nextUid = Math.max(nextUid, ...filterChain.map((l) => l.uid + 1), 1);
+  renderChainUI();
+  applyChain();
+}
+
 // Drag-to-reorder state
 let dragSrcUid = null;
 
@@ -128,6 +164,7 @@ function addLayer(filterId) {
   const params = {};
   for (const p of filter.params) params[p.id] = p.default;
   const layer = { uid: nextUid++, filterId, params, visible: true, opacity: 1 };
+  snapshot();
   filterChain.push(layer);
   selectedLayerUid = layer.uid;
   renderChainUI();
@@ -135,6 +172,7 @@ function addLayer(filterId) {
 }
 
 function removeLayer(uid) {
+  snapshot();
   filterChain = filterChain.filter((l) => l.uid !== uid);
   if (selectedLayerUid === uid) {
     selectedLayerUid = filterChain.length > 0 ? filterChain[filterChain.length - 1].uid : null;
@@ -150,6 +188,7 @@ function selectLayer(uid) {
 }
 
 function moveLayer(fromUid, toUid, position) {
+  snapshot();
   const fromIdx = filterChain.findIndex((l) => l.uid === fromUid);
   const toIdx = filterChain.findIndex((l) => l.uid === toUid);
   if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return;
@@ -299,6 +338,8 @@ function renderParamPanel() {
     document.getElementById(opValId).textContent = Math.round(layer.opacity * 100) + '%';
     clearTimeout(opRow._db);
     opRow._db = setTimeout(applyChain, 50);
+    clearTimeout(opRow._snap);
+    opRow._snap = setTimeout(snapshot, 600);
   });
   paramPanel.appendChild(opRow);
 
@@ -316,15 +357,17 @@ function renderParamPanel() {
     `;
     const slider = row.querySelector('input');
     let debounce;
+    let snapDebounce;
     slider.addEventListener('input', () => {
       const v = parseFloat(slider.value);
       layer.params[p.id] = v;
       document.getElementById(valId).textContent = fmt(v, p.step);
-      // update hint in layer list
       const hint = layerList.querySelector(`[data-uid="${layer.uid}"] .layer-param-hint`);
       if (hint) hint.textContent = buildParamHint(filter, layer.params);
       clearTimeout(debounce);
       debounce = setTimeout(applyChain, 50);
+      clearTimeout(snapDebounce);
+      snapDebounce = setTimeout(snapshot, 600);
     });
     paramPanel.appendChild(row);
   }
@@ -425,6 +468,7 @@ btnDownload.addEventListener('click', () => {
 });
 btnSplit.addEventListener('click', toggleSplit);
 btnClearChain.addEventListener('click', () => {
+  snapshot();
   filterChain = [];
   selectedLayerUid = null;
   renderChainUI();
@@ -447,8 +491,11 @@ function toggleSplit() {
 
 // ── Keyboard shortcuts ─────────────────────────────────────────────────────
 document.addEventListener('keydown', (e) => {
-  // Ignore if typing in an input
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); return; }
+
   if (!hasImage && !['1','2','3','4','5','6','7','8','9','0'].includes(e.key)) return;
 
   switch (e.key) {
@@ -521,6 +568,7 @@ function renderPresets() {
     item.addEventListener('click', (e) => {
       if (e.target.classList.contains('preset-delete')) return;
       if (!hasImage) return;
+      snapshot();
       filterChain = preset.chain.map(({ filterId, params }) => ({
         uid: nextUid++,
         filterId,
