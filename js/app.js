@@ -607,15 +607,23 @@ const CURVE_INPUT_X = [0, 64, 128, 192, 255];
 const CURVE_PARAM_IDS = ['p0', 'p1', 'p2', 'p3', 'p4'];
 
 function renderToneCurvePanel(layer, filter) {
-  const W = 180, H = 180;
+  const DISPLAY = 180;
   const cvs = document.createElement('canvas');
   cvs.className = 'tone-curve-canvas';
-  cvs.width = W;
-  cvs.height = H;
   paramPanel.appendChild(cvs);
 
   const ctx = cvs.getContext('2d');
   let dragging = null;
+  let dpr = 1, W = DISPLAY, H = DISPLAY;
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.round(DISPLAY * dpr);
+    H = Math.round(DISPLAY * dpr);
+    cvs.width = W;
+    cvs.height = H;
+  }
+  resize();
 
   function getY(id) { return layer.params[id] ?? filter.params.find((p) => p.id === id).default; }
 
@@ -626,7 +634,7 @@ function renderToneCurvePanel(layer, filter) {
 
     // Grid
     ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = dpr;
     for (let i = 1; i < 4; i++) {
       ctx.beginPath(); ctx.moveTo(i * W / 4, 0); ctx.lineTo(i * W / 4, H); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0, i * H / 4); ctx.lineTo(W, i * H / 4); ctx.stroke();
@@ -634,7 +642,7 @@ function renderToneCurvePanel(layer, filter) {
 
     // Diagonal (identity line)
     ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-    ctx.setLineDash([3, 4]);
+    ctx.setLineDash([3 * dpr, 4 * dpr]);
     ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(W, 0); ctx.stroke();
     ctx.setLineDash([]);
 
@@ -642,7 +650,8 @@ function renderToneCurvePanel(layer, filter) {
     const pts = CURVE_PARAM_IDS.map((id, i) => [CURVE_INPUT_X[i], getY(id)]);
     const lut = buildCurveLut(pts);
     ctx.strokeStyle = '#7eb8ff';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.lineJoin = 'round';
     ctx.beginPath();
     for (let x = 0; x <= 255; x++) {
       const px = (x / 255) * W;
@@ -657,8 +666,8 @@ function renderToneCurvePanel(layer, filter) {
       const py = H - (iy / 255) * H;
       ctx.fillStyle = dragging === i ? '#ffffff' : '#7eb8ff';
       ctx.strokeStyle = '#0d0d14';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.beginPath(); ctx.arc(px, py, 5 * dpr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     });
   }
 
@@ -672,7 +681,7 @@ function renderToneCurvePanel(layer, filter) {
     CURVE_PARAM_IDS.forEach((id, i) => {
       const px = (CURVE_INPUT_X[i] / 255) * W;
       const py = H - (getY(id) / 255) * H;
-      if (Math.hypot(mx - px, my - py) < 10) dragging = i;
+      if (Math.hypot(mx - px, my - py) < 10 * dpr) dragging = i;
     });
     if (dragging === null) return;
 
