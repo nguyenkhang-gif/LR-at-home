@@ -34,6 +34,21 @@ export function brightness(data, value) {
 
 /**
  * @param {Uint8Array} data
+ * @param {number} shadow_hue
+ * @param {number} shadow_sat
+ * @param {number} mid_hue
+ * @param {number} mid_sat
+ * @param {number} hi_hue
+ * @param {number} hi_sat
+ */
+export function color_grade(data, shadow_hue, shadow_sat, mid_hue, mid_sat, hi_hue, hi_sat) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.color_grade(ptr0, len0, data, shadow_hue, shadow_sat, mid_hue, mid_sat, hi_hue, hi_sat);
+}
+
+/**
+ * @param {Uint8Array} data
  * @param {number} factor
  */
 export function contrast(data, factor) {

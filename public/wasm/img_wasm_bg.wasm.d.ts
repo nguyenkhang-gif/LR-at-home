@@ -4,6 +4,7 @@ export const memory: WebAssembly.Memory;
 export const blacks: (a: number, b: number, c: any, d: number) => void;
 export const box_blur: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
 export const brightness: (a: number, b: number, c: any, d: number) => void;
+export const color_grade: (a: number, b: number, c: any, d: number, e: number, f: number, g: number, h: number, i: number) => void;
 export const contrast: (a: number, b: number, c: any, d: number) => void;
 export const edge_detect: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
 export const exposure: (a: number, b: number, c: any, d: number) => void;

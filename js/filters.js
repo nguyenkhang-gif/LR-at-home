@@ -1,6 +1,6 @@
 export const FILTER_GROUPS = [
   { label: 'Ánh sáng', ids: ['exposure', 'highlights', 'shadows', 'whites', 'blacks', 'brightness', 'contrast'] },
-  { label: 'Màu sắc', ids: ['grayscale', 'sepia', 'saturation', 'hue_rotate', 'invert'] },
+  { label: 'Màu sắc', ids: ['grayscale', 'sepia', 'saturation', 'hue_rotate', 'invert', 'color_grade'] },
   { label: 'Chi tiết', ids: ['box_blur', 'sharpen'] },
   { label: 'Nghệ thuật', ids: ['edge_detect', 'threshold'] },
   { label: 'Hiệu ứng', ids: ['vignette', 'grain'] },
@@ -96,5 +96,22 @@ export const FILTERS = [
     id: 'hue_rotate', name: 'Xoay màu sắc',
     params: [{ id: 'degrees', label: 'Góc', min: 0, max: 360, default: 180, step: 1 }],
     apply: (wasm, data, p) => wasm.hue_rotate(data.data, p.degrees),
+  },
+  {
+    id: 'color_grade', name: 'Color Grading',
+    params: [
+      { id: 'shadow_hue', label: 'Shadow Hue',  min: 0, max: 360, default: 180, step: 1 },
+      { id: 'shadow_sat', label: 'Shadow Sat',  min: 0, max: 1,   default: 0,   step: 0.01 },
+      { id: 'mid_hue',    label: 'Mid Hue',     min: 0, max: 360, default: 0,   step: 1 },
+      { id: 'mid_sat',    label: 'Mid Sat',     min: 0, max: 1,   default: 0,   step: 0.01 },
+      { id: 'hi_hue',     label: 'Highlight Hue', min: 0, max: 360, default: 30, step: 1 },
+      { id: 'hi_sat',     label: 'Highlight Sat', min: 0, max: 1,   default: 0,  step: 0.01 },
+    ],
+    apply: (wasm, data, p) => wasm.color_grade(
+      data.data,
+      p.shadow_hue, p.shadow_sat,
+      p.mid_hue,    p.mid_sat,
+      p.hi_hue,     p.hi_sat,
+    ),
   },
 ];

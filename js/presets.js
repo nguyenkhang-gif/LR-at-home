@@ -6,6 +6,7 @@ export const PRESET_GROUPS = [
   { label: 'Cinematic', ids: ['teal_orange', 'cold_blue', 'moody_dark'] },
   { label: 'Bright & Airy', ids: ['summer', 'sharp_pop'] },
   { label: 'Artistic', ids: ['edge_art', 'lo_fi', 'faded'] },
+  { label: 'Anime', ids: ['kimi_no_na_wa', 'spirited_away', 'your_lie'] },
 ];
 
 export const BUILTIN_PRESETS = [
@@ -142,6 +143,42 @@ export const BUILTIN_PRESETS = [
       { filterId: 'whites', params: { value: -0.3 } },
       { filterId: 'saturation', params: { factor: 0.7 } },
       { filterId: 'sepia', params: { intensity: 0.15 } },
+    ],
+  },
+  // ── Anime ──
+  {
+    id: 'kimi_no_na_wa',
+    name: 'Kimi no Na wa',
+    chain: [
+      { filterId: 'exposure',     params: { stops: 0.3 } },
+      { filterId: 'contrast',     params: { factor: 1.2 } },
+      { filterId: 'highlights',   params: { value: -0.2 } },
+      { filterId: 'shadows',      params: { value: 0.1 } },
+      { filterId: 'color_grade',  params: { shadow_hue: 195, shadow_sat: 0.7, mid_hue: 0, mid_sat: 0, hi_hue: 35, hi_sat: 0.5 } },
+      { filterId: 'saturation',   params: { factor: 1.3 } },
+      { filterId: 'vignette',     params: { strength: 0.3 } },
+    ],
+  },
+  {
+    id: 'spirited_away',
+    name: 'Spirited Away',
+    chain: [
+      { filterId: 'exposure',     params: { stops: 0.2 } },
+      { filterId: 'contrast',     params: { factor: 1.1 } },
+      { filterId: 'color_grade',  params: { shadow_hue: 220, shadow_sat: 0.4, mid_hue: 60, mid_sat: 0.2, hi_hue: 45, hi_sat: 0.3 } },
+      { filterId: 'saturation',   params: { factor: 1.4 } },
+      { filterId: 'brightness',   params: { value: 8 } },
+    ],
+  },
+  {
+    id: 'your_lie',
+    name: 'Your Lie in April',
+    chain: [
+      { filterId: 'brightness',   params: { value: 20 } },
+      { filterId: 'contrast',     params: { factor: 0.9 } },
+      { filterId: 'color_grade',  params: { shadow_hue: 240, shadow_sat: 0.3, mid_hue: 30, mid_sat: 0.15, hi_hue: 50, hi_sat: 0.4 } },
+      { filterId: 'saturation',   params: { factor: 1.2 } },
+      { filterId: 'highlights',   params: { value: 0.15 } },
     ],
   },
 ];

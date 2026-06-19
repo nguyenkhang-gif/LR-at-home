@@ -77,6 +77,7 @@ const splitInner = document.getElementById('split-inner');
 const bothGrid = document.getElementById('both-grid');
 const wasmStatus = document.getElementById('wasm-status');
 const sidebarControls = document.getElementById('sidebar-controls');
+const rightPanel = document.getElementById('right-panel');
 const emptyHint = document.getElementById('empty-hint');
 const uploadName = document.getElementById('upload-name');
 const presetList = document.getElementById('preset-list');
@@ -124,6 +125,8 @@ function handleFile(file) {
       statsBar.innerHTML = '';
       emptyHint.style.display = 'none';
       sidebarControls.style.display = 'block';
+      rightPanel.style.display = 'flex';
+      rightPanel.style.flexDirection = 'column';
       renderChainUI();
       updateView();
     };
@@ -220,7 +223,7 @@ const EYE_CLOSED = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" 
 function renderChainUI() {
   renderLayerList();
   renderParamPanel();
-  chainSection.style.display = filterChain.length > 0 ? '' : 'none';
+  chainSection.style.display = filterChain.length > 0 ? 'block' : 'none';
 }
 
 function renderLayerList() {

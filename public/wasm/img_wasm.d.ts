@@ -7,6 +7,8 @@ export function box_blur(data: Uint8Array, width: number, height: number, radius
 
 export function brightness(data: Uint8Array, value: number): void;
 
+export function color_grade(data: Uint8Array, shadow_hue: number, shadow_sat: number, mid_hue: number, mid_sat: number, hi_hue: number, hi_sat: number): void;
+
 export function contrast(data: Uint8Array, factor: number): void;
 
 export function edge_detect(data: Uint8Array, width: number, height: number, sensitivity: number): void;
@@ -44,6 +46,7 @@ export interface InitOutput {
     readonly blacks: (a: number, b: number, c: any, d: number) => void;
     readonly box_blur: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
     readonly brightness: (a: number, b: number, c: any, d: number) => void;
+    readonly color_grade: (a: number, b: number, c: any, d: number, e: number, f: number, g: number, h: number, i: number) => void;
     readonly contrast: (a: number, b: number, c: any, d: number) => void;
     readonly edge_detect: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
     readonly exposure: (a: number, b: number, c: any, d: number) => void;

@@ -283,6 +283,50 @@ pub fn grain(data: &mut [u8], amount: f32) {
     }
 }
 
+// Color grade: tint shadows/midtones/highlights with independent hue+saturation
+// shadow_hue/mid_hue/hi_hue: 0–360; shadow_sat/mid_sat/hi_sat: 0–1
+#[wasm_bindgen]
+pub fn color_grade(
+    data: &mut [u8],
+    shadow_hue: f32, shadow_sat: f32,
+    mid_hue: f32,    mid_sat: f32,
+    hi_hue: f32,     hi_sat: f32,
+) {
+    // Convert each zone hue to a pure-saturation RGB color (L=0.5 in HSL)
+    let (sr, sg, sb) = hsl_to_rgb(shadow_hue / 360.0, 1.0, 0.5);
+    let (mr, mg, mb) = hsl_to_rgb(mid_hue    / 360.0, 1.0, 0.5);
+    let (hr, hg, hb) = hsl_to_rgb(hi_hue     / 360.0, 1.0, 0.5);
+    let (sr, sg, sb) = (sr as f32 / 255.0, sg as f32 / 255.0, sb as f32 / 255.0);
+    let (mr, mg, mb) = (mr as f32 / 255.0, mg as f32 / 255.0, mb as f32 / 255.0);
+    let (hr, hg, hb) = (hr as f32 / 255.0, hg as f32 / 255.0, hb as f32 / 255.0);
+
+    let ss = shadow_sat.clamp(0.0, 1.0) * 0.35;
+    let ms = mid_sat.clamp(0.0, 1.0)    * 0.35;
+    let hs = hi_sat.clamp(0.0, 1.0)     * 0.35;
+
+    for px in data.chunks_mut(4) {
+        let r = px[0] as f32 / 255.0;
+        let g = px[1] as f32 / 255.0;
+        let b = px[2] as f32 / 255.0;
+        let lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+        // Luminance-based zone weights (sum ≈ 1 at any lum)
+        let w_s = (1.0 - lum).powi(2);
+        let w_h = lum.powi(2);
+        let w_m = 4.0 * lum * (1.0 - lum);
+
+        // Weighted tint color
+        let tr = w_s * sr * ss + w_m * mr * ms + w_h * hr * hs;
+        let tg = w_s * sg * ss + w_m * mg * ms + w_h * hg * hs;
+        let tb = w_s * sb * ss + w_m * mb * ms + w_h * hb * hs;
+
+        // Screen blend: result = 1 - (1-pixel)*(1-tint)  →  pixel + tint - pixel*tint
+        px[0] = ((r + tr - r * tr).clamp(0.0, 1.0) * 255.0) as u8;
+        px[1] = ((g + tg - g * tg).clamp(0.0, 1.0) * 255.0) as u8;
+        px[2] = ((b + tb - b * tb).clamp(0.0, 1.0) * 255.0) as u8;
+    }
+}
+
 fn hash(mut x: u32) -> u8 {
     x ^= x << 13;
     x ^= x >> 17;
