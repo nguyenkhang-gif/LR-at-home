@@ -1,6 +1,6 @@
 import { getWasm } from './wasmLoader.js';
-import { FILTERS, FILTER_GROUPS } from './filters.js';
-import { BUILTIN_PRESETS, loadUserPresets, saveUserPreset, deleteUserPreset, exportPresets, importPresets } from './presets.js';
+import { FILTERS, FILTER_GROUPS, buildCurveLut, buildParametricLut } from './filters.js';
+import { BUILTIN_PRESETS, PRESET_GROUPS, loadUserPresets, saveUserPreset, deleteUserPreset, exportPresets, importPresets } from './presets.js';
 
 // ── State ──────────────────────────────────────────────────────────────────
 let wasm = null;
@@ -77,6 +77,7 @@ const splitInner = document.getElementById('split-inner');
 const bothGrid = document.getElementById('both-grid');
 const wasmStatus = document.getElementById('wasm-status');
 const sidebarControls = document.getElementById('sidebar-controls');
+const rightPanel = document.getElementById('right-panel');
 const emptyHint = document.getElementById('empty-hint');
 const uploadName = document.getElementById('upload-name');
 const presetList = document.getElementById('preset-list');
@@ -84,8 +85,8 @@ const btnSavePreset = document.getElementById('btn-save-preset');
 
 // ── WASM init ──────────────────────────────────────────────────────────────
 getWasm()
-  .then((w) => { wasm = w; wasmStatus.textContent = 'WASM sẵn sàng'; wasmStatus.className = 'status-badge ready'; })
-  .catch(() => { wasmStatus.textContent = 'WASM lỗi'; wasmStatus.className = 'status-badge error'; });
+  .then((w) => { wasm = w; wasmStatus.textContent = 'WASM ready'; wasmStatus.className = 'status-badge ready'; })
+  .catch(() => { wasmStatus.textContent = 'WASM error'; wasmStatus.className = 'status-badge error'; });
 
 // ── Upload ─────────────────────────────────────────────────────────────────
 uploadZone.addEventListener('click', () => fileInput.click());
@@ -96,8 +97,8 @@ fileInput.addEventListener('change', () => { handleFile(fileInput.files[0]); fil
 
 function handleFile(file) {
   if (!file) return;
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { alert('Chỉ chấp nhận JPEG, PNG, WebP'); return; }
-  if (file.size > 20 * 1024 * 1024) { alert('Ảnh tối đa 20MB'); return; }
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { alert('Only JPEG, PNG, WebP accepted'); return; }
+  if (file.size > 20 * 1024 * 1024) { alert('Max image size is 20MB'); return; }
 
   uploadName.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB`;
 
@@ -124,6 +125,9 @@ function handleFile(file) {
       statsBar.innerHTML = '';
       emptyHint.style.display = 'none';
       sidebarControls.style.display = 'block';
+      rightPanel.style.display = 'flex';
+      rightPanel.style.flexDirection = 'column';
+      resetView();
       renderChainUI();
       updateView();
     };
@@ -220,7 +224,7 @@ const EYE_CLOSED = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" 
 function renderChainUI() {
   renderLayerList();
   renderParamPanel();
-  chainSection.style.display = filterChain.length > 0 ? '' : 'none';
+  chainSection.style.display = filterChain.length > 0 ? 'block' : 'none';
 }
 
 function renderLayerList() {
@@ -234,13 +238,13 @@ function renderLayerList() {
     li.dataset.uid = layer.uid;
     li.draggable = true;
     li.innerHTML = `
-      <span class="layer-drag" title="Kéo để sắp xếp">⠿</span>
-      <button class="layer-eye ${layer.visible ? '' : 'hidden'}" data-uid="${layer.uid}" title="${layer.visible ? 'Ẩn layer' : 'Hiện layer'}">
+      <span class="layer-drag" title="Drag to reorder">⠿</span>
+      <button class="layer-eye ${layer.visible ? '' : 'hidden'}" data-uid="${layer.uid}" title="${layer.visible ? 'Hide layer' : 'Show layer'}">
         ${layer.visible ? EYE_OPEN : EYE_CLOSED}
       </button>
       <span class="layer-name ${layer.visible ? '' : 'muted'}">${filter.name}</span>
       <span class="layer-param-hint">${paramHint}</span>
-      <button class="layer-remove" data-uid="${layer.uid}" title="Xóa layer">×</button>
+      <button class="layer-remove" data-uid="${layer.uid}" title="Remove layer">×</button>
     `;
 
     li.addEventListener('click', (e) => {
@@ -306,11 +310,59 @@ function renderLayerListHighlight() {
 }
 
 function buildParamHint(filter, params) {
+  if (filter.hint) return filter.hint(params);
   const parts = filter.params.map((p) => {
     const v = params[p.id] ?? p.default;
     return p.step < 1 ? Number(v).toFixed(1) : String(Math.round(v));
   });
   return parts.join(' · ');
+}
+
+function makeParamRow({ label, min, max, step, value, display, onChange, onCommit }) {
+  const row = document.createElement('div');
+  row.className = 'param-row';
+
+  const labelEl = document.createElement('div');
+  labelEl.className = 'param-label';
+  labelEl.innerHTML = `<span>${label}</span>`;
+
+  const numInput = document.createElement('input');
+  numInput.type = 'number';
+  numInput.className = 'param-num';
+  numInput.min = min; numInput.max = max; numInput.step = step;
+  numInput.value = step < 1 ? Number(value).toFixed(2) : Math.round(value);
+  labelEl.appendChild(numInput);
+
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = min; slider.max = max; slider.step = step;
+  slider.value = value;
+
+  let applyDebounce, snapDebounce;
+
+  function applyValue(v) {
+    const clamped = Math.min(max, Math.max(min, v));
+    slider.value = clamped;
+    numInput.value = step < 1 ? Number(clamped).toFixed(2) : Math.round(clamped);
+    clearTimeout(applyDebounce);
+    applyDebounce = setTimeout(() => onChange(clamped), 50);
+    clearTimeout(snapDebounce);
+    snapDebounce = setTimeout(onCommit, 600);
+  }
+
+  slider.addEventListener('input', () => applyValue(parseFloat(slider.value)));
+
+  numInput.addEventListener('input', () => {
+    const v = parseFloat(numInput.value);
+    if (!isNaN(v)) applyValue(v);
+  });
+  numInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { numInput.blur(); applyValue(parseFloat(numInput.value) || 0); }
+  });
+
+  row.appendChild(labelEl);
+  row.appendChild(slider);
+  return row;
 }
 
 function renderParamPanel() {
@@ -323,54 +375,487 @@ function renderParamPanel() {
   paramPanel.innerHTML = '';
 
   // Opacity row (always first)
-  const opRow = document.createElement('div');
-  opRow.className = 'param-row';
-  const opValId = `pv-${layer.uid}-opacity`;
-  opRow.innerHTML = `
-    <div class="param-label">
-      <span>Độ mờ</span>
-      <span class="param-value" id="${opValId}">${Math.round((layer.opacity ?? 1) * 100)}%</span>
-    </div>
-    <input type="range" min="0" max="1" step="0.01" value="${layer.opacity ?? 1}" />
-  `;
-  opRow.querySelector('input').addEventListener('input', (e) => {
-    layer.opacity = parseFloat(e.target.value);
-    document.getElementById(opValId).textContent = Math.round(layer.opacity * 100) + '%';
-    clearTimeout(opRow._db);
-    opRow._db = setTimeout(applyChain, 50);
-    clearTimeout(opRow._snap);
-    opRow._snap = setTimeout(snapshot, 600);
-  });
-  paramPanel.appendChild(opRow);
+  paramPanel.appendChild(makeParamRow({
+    label: 'Opacity',
+    min: 0, max: 100, step: 1,
+    value: Math.round((layer.opacity ?? 1) * 100),
+    display: (v) => v + '%',
+    onChange: (v) => {
+      layer.opacity = v / 100;
+      applyChain();
+    },
+    onCommit: snapshot,
+  }));
 
-  for (const p of filter.params) {
-    const val = layer.params[p.id] ?? p.default;
-    const row = document.createElement('div');
-    row.className = 'param-row';
-    const valId = `pv-${layer.uid}-${p.id}`;
-    row.innerHTML = `
-      <div class="param-label">
-        <span>${p.label}</span>
-        <span class="param-value" id="${valId}">${fmt(val, p.step)}</span>
-      </div>
-      <input type="range" min="${p.min}" max="${p.max}" step="${p.step}" value="${val}" />
-    `;
-    const slider = row.querySelector('input');
-    let debounce;
-    let snapDebounce;
-    slider.addEventListener('input', () => {
-      const v = parseFloat(slider.value);
-      layer.params[p.id] = v;
-      document.getElementById(valId).textContent = fmt(v, p.step);
-      const hint = layerList.querySelector(`[data-uid="${layer.uid}"] .layer-param-hint`);
-      if (hint) hint.textContent = buildParamHint(filter, layer.params);
-      clearTimeout(debounce);
-      debounce = setTimeout(applyChain, 50);
-      clearTimeout(snapDebounce);
-      snapDebounce = setTimeout(snapshot, 600);
-    });
-    paramPanel.appendChild(row);
+  if (filter.id === 'hsl_adjust') {
+    renderHslPanel(layer, filter);
+  } else if (filter.id === 'tone_curve') {
+    renderToneCurvePanel(layer, filter);
+  } else if (filter.id === 'color_grade') {
+    renderColorGradePanel(layer, filter);
+  } else if (filter.id === 'parametric_curve') {
+    renderParametricCurvePanel(layer, filter);
+  } else {
+    for (const p of filter.params) {
+      paramPanel.appendChild(makeParamRow({
+        label: p.label,
+        min: p.min, max: p.max, step: p.step,
+        value: layer.params[p.id] ?? p.default,
+        display: (v) => fmt(v, p.step),
+        onChange: (v) => {
+          layer.params[p.id] = v;
+          const hint = layerList.querySelector(`[data-uid="${layer.uid}"] .layer-param-hint`);
+          if (hint) hint.textContent = buildParamHint(filter, layer.params);
+          applyChain();
+        },
+        onCommit: snapshot,
+      }));
+    }
   }
+}
+
+const HSL_COLORS = [
+  { key: 'r', label: 'Red',     color: '#e05555' },
+  { key: 'o', label: 'Orange',  color: '#e08c35' },
+  { key: 'y', label: 'Yellow',  color: '#d4c435' },
+  { key: 'g', label: 'Green',   color: '#4caf50' },
+  { key: 'a', label: 'Aqua',    color: '#26b5b5' },
+  { key: 'b', label: 'Blue',    color: '#4f7fff' },
+  { key: 'p', label: 'Purple',  color: '#9c5ce6' },
+  { key: 'm', label: 'Magenta', color: '#d455a0' },
+];
+
+let hslActiveColor = 'r';
+
+function renderHslPanel(layer, filter) {
+  const colorBar = document.createElement('div');
+  colorBar.className = 'hsl-colors';
+
+  HSL_COLORS.forEach(({ key, label, color }) => {
+    const btn = document.createElement('button');
+    btn.className = 'hsl-color-btn' + (hslActiveColor === key ? ' active' : '');
+    btn.title = label;
+    btn.innerHTML = `
+      <div class="hsl-color-dot" style="background:${color}"></div>
+      <div class="hsl-color-tick"></div>
+    `;
+    btn.addEventListener('click', () => {
+      hslActiveColor = key;
+      renderParamPanel();
+    });
+    colorBar.appendChild(btn);
+  });
+  paramPanel.appendChild(colorBar);
+
+  const { key } = HSL_COLORS.find((c) => c.key === hslActiveColor);
+  const sliders = [
+    { id: `${key}_h`, label: 'Hue',        min: -180, max: 180, step: 1 },
+    { id: `${key}_s`, label: 'Saturation', min: -100, max: 100, step: 1 },
+    { id: `${key}_l`, label: 'Luminance',  min: -100, max: 100, step: 1 },
+  ];
+
+  for (const p of sliders) {
+    paramPanel.appendChild(makeParamRow({
+      label: p.label,
+      min: p.min, max: p.max, step: p.step,
+      value: layer.params[p.id] ?? 0,
+      display: (v) => fmt(v, p.step),
+      onChange: (v) => {
+        layer.params[p.id] = v;
+        applyChain();
+      },
+      onCommit: snapshot,
+    }));
+  }
+}
+
+// ── Color Grading Wheels ───────────────────────────────────────────────────
+const CG_ZONES = [
+  { label: 'Shadows',    hueId: 'shadow_hue', satId: 'shadow_sat', lumId: 'shadow_lum' },
+  { label: 'Midtones',   hueId: 'mid_hue',    satId: 'mid_sat',    lumId: 'mid_lum' },
+  { label: 'Highlights', hueId: 'hi_hue',     satId: 'hi_sat',     lumId: 'hi_lum' },
+];
+
+function cgHslToRgb(h, s, l) {
+  if (s === 0) { const v = Math.round(l * 255); return [v, v, v]; }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  function ch(t) {
+    if (t < 0) t += 1; if (t > 1) t -= 1;
+    if (t < 1/6) return Math.round((p + (q-p)*6*t) * 255);
+    if (t < 1/2) return Math.round(q * 255);
+    if (t < 2/3) return Math.round((p + (q-p)*(2/3-t)*6) * 255);
+    return Math.round(p * 255);
+  }
+  return [ch(h + 1/3), ch(h), ch(h - 1/3)];
+}
+
+function drawColorWheel(canvas, hue, sat) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const display = canvas.offsetWidth || 80;
+  const S = Math.round(display * dpr);
+  if (canvas.width !== S) { canvas.width = S; canvas.height = S; }
+
+  const ctx = canvas.getContext('2d');
+  const cx = S / 2, cy = S / 2;
+  const r = S / 2 - dpr;
+
+  ctx.clearRect(0, 0, S, S);
+
+  // Clip to smooth circle
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Conic gradient for hue (clockwise from right = red)
+  const conic = ctx.createConicGradient(0, cx, cy);
+  for (let i = 0; i <= 12; i++) {
+    const t = i / 12;
+    const [rr, gg, bb] = cgHslToRgb(t, 1, 0.5);
+    conic.addColorStop(t, `rgb(${rr},${gg},${bb})`);
+  }
+  ctx.fillStyle = conic;
+  ctx.fillRect(0, 0, S, S);
+
+  // Radial gradient: white center → transparent edge (creates saturation effect)
+  const radial = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  radial.addColorStop(0, 'rgba(255,255,255,1)');
+  radial.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = radial;
+  ctx.fillRect(0, 0, S, S);
+
+  ctx.restore();
+
+  // Subtle border
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = dpr;
+  ctx.beginPath(); ctx.arc(cx, cy, r - dpr * 0.5, 0, Math.PI * 2); ctx.stroke();
+
+  // Indicator dot
+  const angle = (hue / 360) * Math.PI * 2;
+  const dotX = cx + Math.cos(angle) * sat * r;
+  const dotY = cy + Math.sin(angle) * sat * r;
+  const dotR = 4.5 * dpr;
+  ctx.fillStyle = sat > 0.55 ? '#fff' : '#222';
+  ctx.strokeStyle = sat > 0.55 ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)';
+  ctx.lineWidth = 1.5 * dpr;
+  ctx.beginPath(); ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+}
+
+function renderColorGradePanel(layer, filter) {
+  const wheelsRow = document.createElement('div');
+  wheelsRow.className = 'cg-wheels';
+
+  CG_ZONES.forEach(({ label, hueId, satId }) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'cg-zone';
+
+    const cvs = document.createElement('canvas');
+    cvs.className = 'cg-wheel';
+
+    const getHue = () => layer.params[hueId] ?? filter.params.find((p) => p.id === hueId).default;
+    const getSat = () => layer.params[satId] ?? filter.params.find((p) => p.id === satId).default;
+    const redraw = () => drawColorWheel(cvs, getHue(), getSat());
+
+    cvs.addEventListener('mousedown', (e) => {
+      function update(ev) {
+        const rect = cvs.getBoundingClientRect();
+        const r = Math.min(rect.width, rect.height) / 2 - 1;
+        const dx = ev.clientX - rect.left - rect.width / 2;
+        const dy = ev.clientY - rect.top - rect.height / 2;
+        layer.params[hueId] = ((Math.atan2(dy, dx) / (Math.PI * 2)) * 360 + 360) % 360;
+        layer.params[satId] = Math.min(1, Math.sqrt(dx * dx + dy * dy) / r);
+        requestAnimationFrame(redraw); applyChain();
+      }
+      update(e);
+      const onMove = (ev) => update(ev);
+      const onUp = () => {
+        snapshot();
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    const lbl = document.createElement('p');
+    lbl.className = 'cg-zone-label';
+    lbl.textContent = label;
+
+    wrap.appendChild(cvs);
+    wrap.appendChild(lbl);
+    wheelsRow.appendChild(wrap);
+    requestAnimationFrame(redraw); // draw after layout so offsetWidth is available
+  });
+
+  paramPanel.appendChild(wheelsRow);
+
+  // Lum sliders below the wheels
+  CG_ZONES.forEach(({ label, lumId }) => {
+    const p = filter.params.find((x) => x.id === lumId);
+    paramPanel.appendChild(makeParamRow({
+      label: label + ' Lum',
+      min: p.min, max: p.max, step: p.step,
+      value: layer.params[lumId] ?? p.default,
+      display: (v) => fmt(v, p.step),
+      onChange: (v) => { layer.params[lumId] = v; applyChain(); },
+      onCommit: snapshot,
+    }));
+  });
+}
+
+const CURVE_INPUT_X = [0, 64, 128, 192, 255];
+const CURVE_PARAM_IDS = ['p0', 'p1', 'p2', 'p3', 'p4'];
+
+function renderParametricCurvePanel(layer, filter) {
+  const DISPLAY = 180;
+  const cvs = document.createElement('canvas');
+  cvs.className = 'tone-curve-canvas';
+  paramPanel.appendChild(cvs);
+
+  const ctx = cvs.getContext('2d');
+  let dpr = 1, W = DISPLAY, H = DISPLAY;
+  // which split handle is being dragged (0,1,2) or null
+  let draggingSplit = null;
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.round(DISPLAY * dpr);
+    H = Math.round(DISPLAY * dpr);
+    cvs.width = W;
+    cvs.height = H;
+  }
+  resize();
+
+  function getP(id) {
+    const def = filter.params.find((p) => p.id === id)?.default ?? 0;
+    return layer.params[id] ?? def;
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0d0d14';
+    ctx.fillRect(0, 0, W, H);
+
+    const s1 = getP('split1');
+    const s2 = getP('split2');
+    const s3 = getP('split3');
+
+    // Zone backgrounds (subtle)
+    const zones = [
+      [0, s1, 'rgba(100,140,255,0.04)'],
+      [s1, s2, 'rgba(180,180,255,0.04)'],
+      [s2, s3, 'rgba(255,220,100,0.04)'],
+      [s3, 255, 'rgba(255,255,200,0.06)'],
+    ];
+    zones.forEach(([xa, xb, col]) => {
+      ctx.fillStyle = col;
+      ctx.fillRect((xa / 255) * W, 0, ((xb - xa) / 255) * W, H);
+    });
+
+    // Grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = dpr;
+    for (let i = 1; i < 4; i++) {
+      ctx.beginPath(); ctx.moveTo(i * W / 4, 0); ctx.lineTo(i * W / 4, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * H / 4); ctx.lineTo(W, i * H / 4); ctx.stroke();
+    }
+
+    // Diagonal
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.setLineDash([3 * dpr, 4 * dpr]);
+    ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(W, 0); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Split zone dividers
+    [s1, s2, s3].forEach((sx, i) => {
+      const px = (sx / 255) * W;
+      ctx.strokeStyle = draggingSplit === i ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = dpr;
+      ctx.setLineDash([2 * dpr, 3 * dpr]);
+      ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, H - 10 * dpr); ctx.stroke();
+      ctx.setLineDash([]);
+      // triangle handle at bottom
+      ctx.fillStyle = draggingSplit === i ? '#fff' : 'rgba(255,255,255,0.5)';
+      ctx.beginPath();
+      ctx.moveTo(px, H - 2 * dpr);
+      ctx.lineTo(px - 5 * dpr, H - 10 * dpr);
+      ctx.lineTo(px + 5 * dpr, H - 10 * dpr);
+      ctx.closePath(); ctx.fill();
+    });
+
+    // Curve from parametric LUT
+    const lut = buildParametricLut({
+      shadows: getP('shadows'), darks: getP('darks'),
+      lights: getP('lights'), highlights: getP('highlights'),
+      split1: s1, split2: s2, split3: s3,
+    });
+    ctx.strokeStyle = '#7eb8ff';
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    for (let x = 0; x <= 255; x++) {
+      const px = (x / 255) * W;
+      const py = H - (lut[x] / 255) * H;
+      x === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+
+  function clientToX(e) {
+    const rect = cvs.getBoundingClientRect();
+    return ((e.clientX - rect.left) / rect.width) * W;
+  }
+
+  const HANDLE_Y_THRESHOLD = 14 * dpr;
+
+  cvs.addEventListener('mousedown', (e) => {
+    const rect = cvs.getBoundingClientRect();
+    const mx = ((e.clientX - rect.left) / rect.width) * W;
+    const my = ((e.clientY - rect.top) / rect.height) * H;
+    if (my < H - HANDLE_Y_THRESHOLD) return;
+
+    const splits = ['split1', 'split2', 'split3'];
+    const splitVals = splits.map((id) => (getP(id) / 255) * W);
+    const closest = splitVals.map((px, i) => ({ d: Math.abs(mx - px), i })).sort((a, b) => a.d - b.d)[0];
+    if (closest.d < 14 * dpr) draggingSplit = closest.i;
+    if (draggingSplit === null) return;
+
+    e.preventDefault();
+    const ids = ['split1', 'split2', 'split3'];
+    const mins = [10, 60, 135];
+    const maxs = [120, 195, 245];
+
+    function onMove(ev) {
+      const nx = clientToX(ev);
+      const val = Math.round(Math.max(mins[draggingSplit], Math.min(maxs[draggingSplit], (nx / W) * 255)));
+      layer.params[ids[draggingSplit]] = val;
+      draw();
+      applyChain();
+    }
+    function onUp() {
+      if (draggingSplit !== null) { snapshot(); draggingSplit = null; draw(); }
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  draw();
+
+  // Zone sliders
+  const ZONE_PARAMS = ['shadows', 'darks', 'lights', 'highlights'];
+  ZONE_PARAMS.forEach((id) => {
+    const def = filter.params.find((p) => p.id === id);
+    paramPanel.appendChild(makeParamRow({
+      label: def.label,
+      min: def.min, max: def.max, step: def.step,
+      value: getP(id),
+      display: (v) => fmt(v, 1),
+      onChange: (v) => { layer.params[id] = v; draw(); applyChain(); },
+      onCommit: snapshot,
+    }));
+  });
+}
+
+function renderToneCurvePanel(layer, filter) {
+  const DISPLAY = 180;
+  const cvs = document.createElement('canvas');
+  cvs.className = 'tone-curve-canvas';
+  paramPanel.appendChild(cvs);
+
+  const ctx = cvs.getContext('2d');
+  let dragging = null;
+  let dpr = 1, W = DISPLAY, H = DISPLAY;
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.round(DISPLAY * dpr);
+    H = Math.round(DISPLAY * dpr);
+    cvs.width = W;
+    cvs.height = H;
+  }
+  resize();
+
+  function getY(id) { return layer.params[id] ?? filter.params.find((p) => p.id === id).default; }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0d0d14';
+    ctx.fillRect(0, 0, W, H);
+
+    // Grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = dpr;
+    for (let i = 1; i < 4; i++) {
+      ctx.beginPath(); ctx.moveTo(i * W / 4, 0); ctx.lineTo(i * W / 4, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * H / 4); ctx.lineTo(W, i * H / 4); ctx.stroke();
+    }
+
+    // Diagonal (identity line)
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.setLineDash([3 * dpr, 4 * dpr]);
+    ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(W, 0); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Curve from LUT
+    const pts = CURVE_PARAM_IDS.map((id, i) => [CURVE_INPUT_X[i], getY(id)]);
+    const lut = buildCurveLut(pts);
+    ctx.strokeStyle = '#7eb8ff';
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    for (let x = 0; x <= 255; x++) {
+      const px = (x / 255) * W;
+      const py = H - (lut[x] / 255) * H;
+      x === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    // Control point dots
+    pts.forEach(([ix, iy], i) => {
+      const px = (ix / 255) * W;
+      const py = H - (iy / 255) * H;
+      ctx.fillStyle = dragging === i ? '#ffffff' : '#7eb8ff';
+      ctx.strokeStyle = '#0d0d14';
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.beginPath(); ctx.arc(px, py, 5 * dpr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    });
+  }
+
+  function clientToCanvas(e) {
+    const rect = cvs.getBoundingClientRect();
+    return [(e.clientX - rect.left) / rect.width * W, (e.clientY - rect.top) / rect.height * H];
+  }
+
+  cvs.addEventListener('mousedown', (e) => {
+    const [mx, my] = clientToCanvas(e);
+    CURVE_PARAM_IDS.forEach((id, i) => {
+      const px = (CURVE_INPUT_X[i] / 255) * W;
+      const py = H - (getY(id) / 255) * H;
+      if (Math.hypot(mx - px, my - py) < 10 * dpr) dragging = i;
+    });
+    if (dragging === null) return;
+
+    function onMove(ev) {
+      const [, my2] = clientToCanvas(ev);
+      const newY = Math.round(Math.max(0, Math.min(255, (1 - my2 / H) * 255)));
+      layer.params[CURVE_PARAM_IDS[dragging]] = newY;
+      draw();
+      applyChain();
+    }
+    function onUp() {
+      if (dragging !== null) { snapshot(); dragging = null; draw(); }
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  draw();
 }
 
 function fmt(v, step) { return step < 1 ? Number(v).toFixed(2) : String(Math.round(v)); }
@@ -415,9 +900,9 @@ function applyChain() {
 
   const mpxs = (src.width * src.height / elapsed / 1000).toFixed(1);
   statsBar.innerHTML = `
-    <div class="stat-card"><span class="stat-label">Thời gian</span><span class="stat-value">${elapsed.toFixed(1)}ms</span></div>
-    <div class="stat-card"><span class="stat-label">Kích thước</span><span class="stat-value">${src.width}×${src.height} px</span></div>
-    <div class="stat-card"><span class="stat-label">Tốc độ</span><span class="stat-value">${mpxs} Mpx/s</span></div>
+    <div class="stat-card"><span class="stat-label">Time</span><span class="stat-value">${elapsed.toFixed(1)}ms</span></div>
+    <div class="stat-card"><span class="stat-label">Size</span><span class="stat-value">${src.width}×${src.height} px</span></div>
+    <div class="stat-card"><span class="stat-label">Speed</span><span class="stat-value">${mpxs} Mpx/s</span></div>
     <div class="stat-card"><span class="stat-label">Layers</span><span class="stat-value">${filterChain.length}</span></div>
   `;
 }
@@ -527,6 +1012,12 @@ document.addEventListener('keydown', (e) => {
       renderParamPanel();
       renderLayerListHighlight();
       break;
+    case '+': case '=':
+      if (hasImage) { viewZoom = Math.min(10, viewZoom * 1.25); applyViewTransform(); }
+      break;
+    case '-':
+      if (hasImage) { viewZoom = Math.max(0.1, viewZoom / 1.25); applyViewTransform(); }
+      break;
     case 'r': case 'R':
       doReset();
       break;
@@ -548,54 +1039,63 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ── Presets ────────────────────────────────────────────────────────────────
+function makePresetItem(preset) {
+  const item = document.createElement('div');
+  item.className = 'preset-item' + (preset.builtin ? ' builtin' : '');
+  item.innerHTML = `
+    <span class="preset-dot"></span>
+    <span class="preset-name">${preset.name}</span>
+    <span class="preset-layers">${preset.chain.length}</span>
+    ${!preset.builtin ? `<button class="preset-delete" title="Delete">×</button>` : ''}
+  `;
+  item.addEventListener('click', (e) => {
+    if (e.target.classList.contains('preset-delete')) return;
+    if (!hasImage) return;
+    snapshot();
+    filterChain = preset.chain.map(({ filterId, params }) => ({
+      uid: nextUid++, filterId, params: { ...params }, visible: true, opacity: 1,
+    }));
+    selectedLayerUid = filterChain.length > 0 ? filterChain[filterChain.length - 1].uid : null;
+    renderChainUI();
+    applyChain();
+  });
+  if (!preset.builtin) {
+    item.querySelector('.preset-delete').addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteUserPreset(preset.id);
+      renderPresets();
+    });
+  }
+  return item;
+}
+
 function renderPresets() {
   presetList.innerHTML = '';
-  const allPresets = [
-    ...BUILTIN_PRESETS.map((p) => ({ ...p, builtin: true })),
-    ...loadUserPresets().map((p) => ({ ...p, builtin: false })),
-  ];
+  const builtinMap = Object.fromEntries(BUILTIN_PRESETS.map((p) => [p.id, p]));
 
-  for (const preset of allPresets) {
-    const item = document.createElement('div');
-    item.className = 'preset-item' + (preset.builtin ? ' builtin' : '');
-    item.innerHTML = `
-      <span class="preset-dot"></span>
-      <span class="preset-name">${preset.name}</span>
-      <span class="preset-layers">${preset.chain.length} layer${preset.chain.length > 1 ? 's' : ''}</span>
-      ${!preset.builtin ? `<button class="preset-delete" data-id="${preset.id}" title="Xóa preset">×</button>` : ''}
-    `;
-
-    item.addEventListener('click', (e) => {
-      if (e.target.classList.contains('preset-delete')) return;
-      if (!hasImage) return;
-      snapshot();
-      filterChain = preset.chain.map(({ filterId, params }) => ({
-        uid: nextUid++,
-        filterId,
-        params: { ...params },
-        visible: true,
-        opacity: 1,
-      }));
-      selectedLayerUid = filterChain.length > 0 ? filterChain[filterChain.length - 1].uid : null;
-      renderChainUI();
-      applyChain();
-    });
-
-    if (!preset.builtin) {
-      item.querySelector('.preset-delete').addEventListener('click', (e) => {
-        e.stopPropagation();
-        deleteUserPreset(preset.id);
-        renderPresets();
-      });
+  for (const group of PRESET_GROUPS) {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'preset-group';
+    groupEl.innerHTML = `<p class="preset-group-label">${group.label}</p>`;
+    for (const id of group.ids) {
+      if (builtinMap[id]) groupEl.appendChild(makePresetItem({ ...builtinMap[id], builtin: true }));
     }
+    presetList.appendChild(groupEl);
+  }
 
-    presetList.appendChild(item);
+  const userPresets = loadUserPresets();
+  if (userPresets.length > 0) {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'preset-group';
+    groupEl.innerHTML = `<p class="preset-group-label">My Presets</p>`;
+    userPresets.forEach((p) => groupEl.appendChild(makePresetItem({ ...p, builtin: false })));
+    presetList.appendChild(groupEl);
   }
 }
 
 btnSavePreset.addEventListener('click', () => {
-  if (filterChain.length === 0) { alert('Chưa có filter nào trong chain.'); return; }
-  const name = prompt('Tên preset:', 'My Preset');
+  if (filterChain.length === 0) { alert('No filters in chain yet.'); return; }
+  const name = prompt('Preset name:', 'My Preset');
   if (!name || !name.trim()) return;
   saveUserPreset(name.trim(), filterChain);
   renderPresets();
@@ -706,6 +1206,33 @@ btnKeybind.addEventListener('click', toggleKeybind);
 btnKbClose.addEventListener('click', toggleKeybind);
 keybindOverlay.addEventListener('click', (e) => { if (e.target === keybindOverlay) toggleKeybind(); });
 
+// ── Collapsible sections ───────────────────────────────────────────────────
+const LS_COLLAPSE = 'lah_collapsed_v1';
+
+function getCollapsed() {
+  try { return JSON.parse(localStorage.getItem(LS_COLLAPSE) || '{}'); } catch { return {}; }
+}
+
+function initCollapsible() {
+  const collapsed = getCollapsed();
+  document.querySelectorAll('.section.collapsible').forEach((section) => {
+    const key = section.dataset.section;
+    if (!key) return;
+    if (collapsed[key]) section.classList.add('collapsed');
+
+    const header = section.querySelector('.section-header');
+    header.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      section.classList.toggle('collapsed');
+      const state = getCollapsed();
+      state[key] = section.classList.contains('collapsed');
+      localStorage.setItem(LS_COLLAPSE, JSON.stringify(state));
+    });
+  });
+}
+
+initCollapsible();
+
 // ── Mobile panel toggle ────────────────────────────────────────────────────
 const btnMobilePanel = document.getElementById('btn-mobile-panel');
 const aside = document.querySelector('aside');
@@ -733,3 +1260,68 @@ document.addEventListener('touchmove', (e) => {
   splitX = Math.max(5, Math.min(95, ((e.touches[0].clientX - rect.left) / rect.width) * 100));
   applySplitX();
 }, { passive: true });
+
+// ── Canvas zoom / pan ──────────────────────────────────────────────────────
+let viewZoom = 1, viewPanX = 0, viewPanY = 0;
+let isPanning = false, panStartX = 0, panStartY = 0, panOriginX = 0, panOriginY = 0;
+
+const canvasWrapper = document.querySelector('.canvas-wrapper');
+const zoomBadge = document.getElementById('zoom-badge');
+let zoomFadeTimer = null;
+
+function applyViewTransform() {
+  bothGrid.style.transformOrigin = 'center center';
+  bothGrid.style.transform = `translate(${viewPanX}px, ${viewPanY}px) scale(${viewZoom})`;
+  zoomBadge.textContent = Math.round(viewZoom * 100) + '%';
+  zoomBadge.classList.add('visible');
+  clearTimeout(zoomFadeTimer);
+  zoomFadeTimer = setTimeout(() => zoomBadge.classList.remove('visible'), 1200);
+}
+
+function resetView() {
+  viewZoom = 1; viewPanX = 0; viewPanY = 0;
+  bothGrid.style.transform = '';
+  zoomBadge.classList.remove('visible');
+}
+
+// Scroll wheel → zoom centered on cursor
+canvasWrapper.addEventListener('wheel', (e) => {
+  if (!hasImage || showSplit) return;
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+  const newZoom = Math.max(0.1, Math.min(10, viewZoom * factor));
+
+  // Keep point under cursor fixed
+  const rect = canvasWrapper.getBoundingClientRect();
+  const mx = e.clientX - rect.left - rect.width / 2;
+  const my = e.clientY - rect.top - rect.height / 2;
+  viewPanX = mx + (viewPanX - mx) * (newZoom / viewZoom);
+  viewPanY = my + (viewPanY - my) * (newZoom / viewZoom);
+  viewZoom = newZoom;
+  applyViewTransform();
+}, { passive: false });
+
+// Drag → pan
+canvasWrapper.addEventListener('mousedown', (e) => {
+  if (!hasImage || showSplit || e.target.closest('.split-handle')) return;
+  isPanning = true;
+  panStartX = e.clientX; panStartY = e.clientY;
+  panOriginX = viewPanX; panOriginY = viewPanY;
+  canvasWrapper.style.cursor = 'grabbing';
+  e.preventDefault();
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isPanning) return;
+  viewPanX = panOriginX + (e.clientX - panStartX);
+  viewPanY = panOriginY + (e.clientY - panStartY);
+  applyViewTransform();
+});
+
+document.addEventListener('mouseup', () => {
+  if (isPanning) { isPanning = false; canvasWrapper.style.cursor = ''; }
+});
+
+// Double-click → reset zoom
+canvasWrapper.addEventListener('dblclick', () => { if (hasImage) resetView(); });
+

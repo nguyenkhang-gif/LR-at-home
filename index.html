@@ -15,7 +15,7 @@
     <span class="sub">WASM · local · zero upload</span>
     <div class="header-right">
       <span class="kbd-hint"><kbd>1–0</kbd> filter · <kbd>[ ]</kbd> prev/next layer · <kbd>Del</kbd> remove · <kbd>S</kbd> split · <kbd>R</kbd> reset · <kbd>D</kbd> download</span>
-      <span id="wasm-status" class="status-badge loading">Đang tải WASM...</span>
+      <span id="wasm-status" class="status-badge loading">Loading WASM...</span>
       <button id="btn-settings" class="btn-icon" title="Settings">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       </button>
@@ -38,8 +38,8 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
             d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
         </svg>
-        <p class="upload-hint">Kéo thả hoặc click để chọn ảnh</p>
-        <p class="upload-sub">JPEG · PNG · WebP · tối đa 20MB</p>
+        <p class="upload-hint">Drag & drop or click to upload</p>
+        <p class="upload-sub">JPEG · PNG · WebP · max 20MB</p>
         <p class="upload-name" id="upload-name"></p>
       </div>
 
@@ -47,50 +47,33 @@
       <div id="sidebar-controls" style="display:none">
 
         <!-- Filter picker -->
-        <div class="section">
-          <p class="section-label">Thêm bộ lọc</p>
-          <div id="filter-grid"></div>
+        <div class="section collapsible" data-section="filters">
+          <div class="section-header">
+            <p class="section-label">Add Filter</p>
+            <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="section-body"><div id="filter-grid"></div></div>
         </div>
 
         <!-- Presets -->
-        <div class="section" id="preset-section">
-          <div class="chain-header">
+        <div class="section collapsible" id="preset-section" data-section="presets">
+          <div class="section-header">
             <p class="section-label">Presets</p>
-            <button class="btn-icon" id="btn-save-preset" title="Lưu chain hiện tại thành preset">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
-                <polyline points="17 21 17 13 7 13 7 21"/>
-                <polyline points="7 3 7 8 15 8"/>
-              </svg>
-            </button>
+            <div style="display:flex;align-items:center;gap:4px">
+              <button class="btn-icon" id="btn-save-preset" title="Save current chain as preset">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              </button>
+              <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
           </div>
-          <div class="preset-list" id="preset-list"></div>
-        </div>
-
-        <!-- Param editor for selected layer -->
-        <div id="param-section" style="display:none" class="section">
-          <p class="section-label" id="param-title">Tham số</p>
-          <div id="param-panel"></div>
-        </div>
-
-        <!-- Layer chain -->
-        <div class="section" id="chain-section" style="display:none">
-          <div class="chain-header">
-            <p class="section-label">Filter chain</p>
-            <button class="btn-icon" id="btn-clear-chain" title="Xóa tất cả">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M18 6L6 18M6 6l12 12"/>
-              </svg>
-            </button>
-          </div>
-          <ul class="layer-list" id="layer-list"></ul>
+          <div class="section-body"><div class="preset-list" id="preset-list"></div></div>
         </div>
 
         <!-- Actions -->
         <div class="btn-group">
           <button class="btn btn-secondary" id="btn-split">Split View <kbd>S</kbd></button>
           <button class="btn btn-secondary" id="btn-reset">Reset <kbd>R</kbd></button>
-          <button class="btn btn-primary" id="btn-download">Tải xuống PNG <kbd>D</kbd></button>
+          <button class="btn btn-primary" id="btn-download">Download PNG <kbd>D</kbd></button>
         </div>
       </div>
     </aside>
@@ -102,11 +85,11 @@
         <div class="both-grid" id="both-grid">
           <div class="canvas-box">
             <canvas id="canvas-original"></canvas>
-            <span class="canvas-label">Gốc</span>
+            <span class="canvas-label">Original</span>
           </div>
           <div class="canvas-box">
             <canvas id="canvas-output"></canvas>
-            <span class="canvas-label">Đã chỉnh</span>
+            <span class="canvas-label">Edited</span>
           </div>
         </div>
 
@@ -118,18 +101,47 @@
               <canvas id="canvas-original-s"></canvas>
             </div>
             <div class="split-handle" id="split-handle"></div>
-            <span class="split-label-left">Gốc</span>
-            <span class="split-label-right">Đã chỉnh</span>
+            <span class="split-label-left">Original</span>
+            <span class="split-label-right">Edited</span>
           </div>
         </div>
 
-        <div class="empty-hint" id="empty-hint">Chọn ảnh để bắt đầu</div>
+        <div class="empty-hint" id="empty-hint">Upload an image to get started</div>
+        <div class="zoom-badge" id="zoom-badge">100%</div>
       </div>
 
       <div class="stats-bar" id="stats-bar">
         <canvas id="histogram" width="160" height="48"></canvas>
       </div>
     </main>
+
+    <!-- Right panel: chain + params -->
+    <aside class="right-panel" id="right-panel" style="display:none">
+
+      <!-- Layer chain -->
+      <div class="section collapsible" id="chain-section" data-section="chain">
+        <div class="section-header">
+          <p class="section-label">Filter chain</p>
+          <div style="display:flex;align-items:center;gap:4px">
+            <button class="btn-icon" id="btn-clear-chain" title="Clear all">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+            <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="section-body"><ul class="layer-list" id="layer-list"></ul></div>
+      </div>
+
+      <!-- Param editor for selected layer -->
+      <div id="param-section" style="display:none" class="section collapsible" data-section="params">
+        <div class="section-header">
+          <p class="section-label" id="param-title">Parameters</p>
+          <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div id="param-panel"></div></div>
+      </div>
+
+    </aside>
   </div>
 </div>
 
@@ -145,18 +157,18 @@
     <div class="kb-body">
 
       <div class="kb-group">
-        <p class="kb-group-label">Ảnh</p>
+        <p class="kb-group-label">Image</p>
         <div class="settings-row">
-          <label class="settings-label">Kích thước tối đa</label>
+          <label class="settings-label">Max size</label>
           <div class="settings-control">
             <select id="setting-max-size">
               <option value="800">800 px</option>
               <option value="1200" selected>1200 px</option>
               <option value="1600">1600 px</option>
               <option value="2400">2400 px</option>
-              <option value="0">Gốc (không resize)</option>
+              <option value="0">Original (no resize)</option>
             </select>
-            <span class="settings-hint">Ảnh lớn hơn sẽ bị scale xuống khi upload</span>
+            <span class="settings-hint">Larger images will be scaled down on upload</span>
           </div>
         </div>
       </div>
@@ -165,15 +177,15 @@
         <p class="kb-group-label">Presets</p>
         <div class="settings-row">
           <label class="settings-label">Export user presets</label>
-          <button class="btn btn-secondary settings-btn" id="settings-export-preset">Tải xuống JSON</button>
+          <button class="btn btn-secondary settings-btn" id="settings-export-preset">Download JSON</button>
         </div>
         <div class="settings-row">
           <label class="settings-label">Import presets</label>
-          <button class="btn btn-secondary settings-btn" id="settings-import-preset">Chọn file JSON</button>
+          <button class="btn btn-secondary settings-btn" id="settings-import-preset">Select JSON file</button>
         </div>
         <div class="settings-row">
-          <label class="settings-label">Xóa tất cả user presets</label>
-          <button class="btn settings-btn settings-btn-danger" id="settings-clear-presets">Xóa hết</button>
+          <label class="settings-label">Delete all user presets</label>
+          <button class="btn settings-btn settings-btn-danger" id="settings-clear-presets">Delete all</button>
         </div>
       </div>
 
@@ -193,29 +205,29 @@
     <div class="kb-body">
       <div class="kb-group">
         <p class="kb-group-label">Filter</p>
-        <div class="kb-row"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> … <kbd>0</kbd><span>Thêm filter theo thứ tự</span></div>
+        <div class="kb-row"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> … <kbd>0</kbd><span>Add filter in order</span></div>
       </div>
       <div class="kb-group">
-        <p class="kb-group-label">Lịch sử</p>
+        <p class="kb-group-label">History</p>
         <div class="kb-row"><kbd>Ctrl</kbd><kbd>Z</kbd><span>Undo</span></div>
         <div class="kb-row"><kbd>Ctrl</kbd><kbd>Y</kbd><span>Redo</span></div>
       </div>
       <div class="kb-group">
         <p class="kb-group-label">Layer</p>
-        <div class="kb-row"><kbd>[</kbd><span>Chọn layer trước</span></div>
-        <div class="kb-row"><kbd>]</kbd><span>Chọn layer sau</span></div>
-        <div class="kb-row"><kbd>Del</kbd><span>Xóa layer đang chọn</span></div>
-        <div class="kb-row"><kbd>Esc</kbd><span>Bỏ chọn layer</span></div>
+        <div class="kb-row"><kbd>[</kbd><span>Select previous layer</span></div>
+        <div class="kb-row"><kbd>]</kbd><span>Select next layer</span></div>
+        <div class="kb-row"><kbd>Del</kbd><span>Delete selected layer</span></div>
+        <div class="kb-row"><kbd>Esc</kbd><span>Deselect layer</span></div>
       </div>
       <div class="kb-group">
-        <p class="kb-group-label">Xem</p>
+        <p class="kb-group-label">View</p>
         <div class="kb-row"><kbd>S</kbd><span>Toggle split view</span></div>
       </div>
       <div class="kb-group">
-        <p class="kb-group-label">Khác</p>
-        <div class="kb-row"><kbd>R</kbd><span>Reset toàn bộ</span></div>
+        <p class="kb-group-label">Other</p>
+        <div class="kb-row"><kbd>R</kbd><span>Reset all</span></div>
         <div class="kb-row"><kbd>D</kbd><span>Download PNG</span></div>
-        <div class="kb-row"><kbd>?</kbd><span>Mở / đóng bảng này</span></div>
+        <div class="kb-row"><kbd>?</kbd><span>Open / close this panel</span></div>
       </div>
     </div>
   </div>

@@ -2,6 +2,18 @@
 
 /**
  * @param {Uint8Array} data
+ * @param {Uint8Array} lut
+ */
+export function apply_lut(data, lut) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(lut, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    wasm.apply_lut(ptr0, len0, data, ptr1, len1);
+}
+
+/**
+ * @param {Uint8Array} data
  * @param {number} value
  */
 export function blacks(data, value) {
@@ -34,12 +46,52 @@ export function brightness(data, value) {
 
 /**
  * @param {Uint8Array} data
+ * @param {number} width
+ * @param {number} height
+ * @param {number} amount
+ */
+export function clarity(data, width, height, amount) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.clarity(ptr0, len0, data, width, height, amount);
+}
+
+/**
+ * @param {Uint8Array} data
+ * @param {number} shadow_hue
+ * @param {number} shadow_sat
+ * @param {number} shadow_lum
+ * @param {number} mid_hue
+ * @param {number} mid_sat
+ * @param {number} mid_lum
+ * @param {number} hi_hue
+ * @param {number} hi_sat
+ * @param {number} hi_lum
+ */
+export function color_grade(data, shadow_hue, shadow_sat, shadow_lum, mid_hue, mid_sat, mid_lum, hi_hue, hi_sat, hi_lum) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.color_grade(ptr0, len0, data, shadow_hue, shadow_sat, shadow_lum, mid_hue, mid_sat, mid_lum, hi_hue, hi_sat, hi_lum);
+}
+
+/**
+ * @param {Uint8Array} data
  * @param {number} factor
  */
 export function contrast(data, factor) {
     var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
     var len0 = WASM_VECTOR_LEN;
     wasm.contrast(ptr0, len0, data, factor);
+}
+
+/**
+ * @param {Uint8Array} data
+ * @param {number} amount
+ */
+export function dehaze(data, amount) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.dehaze(ptr0, len0, data, amount);
 }
 
 /**
@@ -92,6 +144,39 @@ export function highlights(data, value) {
     var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
     var len0 = WASM_VECTOR_LEN;
     wasm.highlights(ptr0, len0, data, value);
+}
+
+/**
+ * @param {Uint8Array} data
+ * @param {number} r_h
+ * @param {number} r_s
+ * @param {number} r_l
+ * @param {number} o_h
+ * @param {number} o_s
+ * @param {number} o_l
+ * @param {number} y_h
+ * @param {number} y_s
+ * @param {number} y_l
+ * @param {number} g_h
+ * @param {number} g_s
+ * @param {number} g_l
+ * @param {number} a_h
+ * @param {number} a_s
+ * @param {number} a_l
+ * @param {number} b_h
+ * @param {number} b_s
+ * @param {number} b_l
+ * @param {number} p_h
+ * @param {number} p_s
+ * @param {number} p_l
+ * @param {number} m_h
+ * @param {number} m_s
+ * @param {number} m_l
+ */
+export function hsl_adjust(data, r_h, r_s, r_l, o_h, o_s, o_l, y_h, y_s, y_l, g_h, g_s, g_l, a_h, a_s, a_l, b_h, b_s, b_l, p_h, p_s, p_l, m_h, m_s, m_l) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.hsl_adjust(ptr0, len0, data, r_h, r_s, r_l, o_h, o_s, o_l, y_h, y_s, y_l, g_h, g_s, g_l, a_h, a_s, a_l, b_h, b_s, b_l, p_h, p_s, p_l, m_h, m_s, m_l);
 }
 
 /**
@@ -160,10 +245,30 @@ export function sharpen(data, width, height, amount) {
  * @param {Uint8Array} data
  * @param {number} value
  */
+export function temperature(data, value) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.temperature(ptr0, len0, data, value);
+}
+
+/**
+ * @param {Uint8Array} data
+ * @param {number} value
+ */
 export function threshold(data, value) {
     var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
     var len0 = WASM_VECTOR_LEN;
     wasm.threshold(ptr0, len0, data, value);
+}
+
+/**
+ * @param {Uint8Array} data
+ * @param {number} value
+ */
+export function tint(data, value) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.tint(ptr0, len0, data, value);
 }
 
 /**
