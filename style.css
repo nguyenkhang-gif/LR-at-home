@@ -180,8 +180,9 @@ input.param-num::-webkit-outer-spin-button { opacity: 0.4; }
 .btn {
   width: 100%; padding: 8px 12px; border: none; border-radius: 7px;
   font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.1s;
-  color: var(--text); display: flex; align-items: center; justify-content: space-between;
+  color: var(--text); display: flex; align-items: center; justify-content: center; gap: 6px;
 }
+.btn kbd { margin-left: auto; }
 .btn-secondary { background: var(--surface2); border: 1px solid var(--border); }
 .btn-secondary:hover { background: var(--surface3); }
 .btn-primary { background: var(--accent); color: #fff; border: none; }
