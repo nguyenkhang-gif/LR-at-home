@@ -260,6 +260,32 @@ canvas { max-width: 100%; max-height: 100%; border-radius: 5px; display: block; 
 }
 .kb-row span { margin-left: auto; color: var(--muted); }
 
+/* ── Settings modal ── */
+.settings-modal { width: 400px; }
+
+.settings-row {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border);
+}
+.settings-row:last-child { border-bottom: none; }
+
+.settings-label { font-size: 11px; color: var(--text); padding-top: 2px; flex: 1; }
+
+.settings-control { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.settings-hint { font-size: 9px; color: var(--muted); text-align: right; max-width: 160px; }
+
+select {
+  background: var(--surface3); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text); font-size: 11px; padding: 4px 8px; cursor: pointer;
+}
+
+.settings-btn {
+  font-size: 11px; padding: 5px 10px; border-radius: 6px;
+  white-space: nowrap; width: auto; justify-content: center;
+}
+.settings-btn-danger { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+.settings-btn-danger:hover { background: rgba(239,68,68,0.25); }
+
 /* ── Mobile toggle button (hidden on desktop) ── */
 .btn-mobile-panel { display: none; }
 

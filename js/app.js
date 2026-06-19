@@ -45,8 +45,6 @@ const emptyHint = document.getElementById('empty-hint');
 const uploadName = document.getElementById('upload-name');
 const presetList = document.getElementById('preset-list');
 const btnSavePreset = document.getElementById('btn-save-preset');
-const btnExportPreset = document.getElementById('btn-export-preset');
-const btnImportPreset = document.getElementById('btn-import-preset');
 
 // ── WASM init ──────────────────────────────────────────────────────────────
 getWasm()
@@ -71,9 +69,9 @@ function handleFile(file) {
   reader.onload = (e) => {
     const img = new Image();
     img.onload = () => {
-      const MAX = 1200;
+      const MAX = getMaxSize();
       let w = img.width, h = img.height;
-      if (w > MAX || h > MAX) {
+      if (MAX > 0 && (w > MAX || h > MAX)) {
         if (w >= h) { h = Math.round(h / w * MAX); w = MAX; }
         else { w = Math.round(w / h * MAX); h = MAX; }
       }
@@ -547,27 +545,6 @@ function renderPresets() {
   }
 }
 
-btnExportPreset.addEventListener('click', () => {
-  if (!exportPresets()) alert('Chưa có user preset nào để export.');
-});
-
-const importFileInput = document.createElement('input');
-importFileInput.type = 'file';
-importFileInput.accept = '.json,application/json';
-importFileInput.addEventListener('change', async () => {
-  const file = importFileInput.files[0];
-  if (!file) return;
-  importFileInput.value = '';
-  try {
-    const added = await importPresets(file);
-    renderPresets();
-    alert(`Đã import ${added} preset mới.`);
-  } catch (err) {
-    alert(`Import thất bại: ${err.message}`);
-  }
-});
-btnImportPreset.addEventListener('click', () => importFileInput.click());
-
 btnSavePreset.addEventListener('click', () => {
   if (filterChain.length === 0) { alert('Chưa có filter nào trong chain.'); return; }
   const name = prompt('Tên preset:', 'My Preset');
@@ -602,6 +579,70 @@ function syncSplitSize(w, h) {
   splitInner.style.width = `${Math.round(w * scale)}px`;
   splitInner.style.height = `${Math.round(h * scale)}px`;
 }
+
+// ── Settings ───────────────────────────────────────────────────────────────
+const LS_SETTINGS = 'lah_settings_v1';
+
+function loadSettings() {
+  try { return JSON.parse(localStorage.getItem(LS_SETTINGS) || '{}'); } catch { return {}; }
+}
+function saveSettings(patch) {
+  localStorage.setItem(LS_SETTINGS, JSON.stringify({ ...loadSettings(), ...patch }));
+}
+
+function getMaxSize() {
+  const v = parseInt(loadSettings().maxSize ?? '1200');
+  return isNaN(v) ? 1200 : v;
+}
+
+const settingsOverlay = document.getElementById('settings-overlay');
+const btnSettings = document.getElementById('btn-settings');
+const settingsClose = document.getElementById('settings-close');
+const settingMaxSize = document.getElementById('setting-max-size');
+const settingsExport = document.getElementById('settings-export-preset');
+const settingsImport = document.getElementById('settings-import-preset');
+const settingsClear  = document.getElementById('settings-clear-presets');
+
+// Init select from saved value
+settingMaxSize.value = String(loadSettings().maxSize ?? '1200');
+
+function toggleSettings() {
+  const visible = settingsOverlay.style.display !== 'none';
+  settingsOverlay.style.display = visible ? 'none' : 'flex';
+}
+
+btnSettings.addEventListener('click', toggleSettings);
+settingsClose.addEventListener('click', toggleSettings);
+settingsOverlay.addEventListener('click', (e) => { if (e.target === settingsOverlay) toggleSettings(); });
+
+settingMaxSize.addEventListener('change', () => saveSettings({ maxSize: settingMaxSize.value }));
+
+settingsExport.addEventListener('click', () => {
+  if (!exportPresets()) alert('Chưa có user preset nào để export.');
+});
+
+const importFileInput = document.createElement('input');
+importFileInput.type = 'file';
+importFileInput.accept = '.json,application/json';
+importFileInput.addEventListener('change', async () => {
+  const file = importFileInput.files[0];
+  if (!file) return;
+  importFileInput.value = '';
+  try {
+    const added = await importPresets(file);
+    renderPresets();
+    alert(`Đã import ${added} preset mới.`);
+  } catch (err) {
+    alert(`Import thất bại: ${err.message}`);
+  }
+});
+settingsImport.addEventListener('click', () => importFileInput.click());
+
+settingsClear.addEventListener('click', () => {
+  if (!confirm('Xóa toàn bộ user presets?')) return;
+  localStorage.removeItem('lah_presets_v1');
+  renderPresets();
+});
 
 // ── Keybind popup ─────────────────────────────────────────────────────────
 const keybindOverlay = document.getElementById('keybind-overlay');

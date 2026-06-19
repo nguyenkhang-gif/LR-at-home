@@ -16,6 +16,9 @@
     <div class="header-right">
       <span class="kbd-hint"><kbd>1–0</kbd> filter · <kbd>[ ]</kbd> prev/next layer · <kbd>Del</kbd> remove · <kbd>S</kbd> split · <kbd>R</kbd> reset · <kbd>D</kbd> download</span>
       <span id="wasm-status" class="status-badge loading">Đang tải WASM...</span>
+      <button id="btn-settings" class="btn-icon" title="Settings">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
       <button id="btn-keybind" class="btn-icon" title="Keyboard shortcuts (?)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M10 14h4"/></svg>
       </button>
@@ -53,21 +56,13 @@
         <div class="section" id="preset-section">
           <div class="chain-header">
             <p class="section-label">Presets</p>
-            <div style="display:flex;gap:4px">
-              <button class="btn-icon" id="btn-import-preset" title="Import presets từ file JSON">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              </button>
-              <button class="btn-icon" id="btn-export-preset" title="Export tất cả user presets ra file JSON">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              </button>
-              <button class="btn-icon" id="btn-save-preset" title="Lưu chain hiện tại thành preset">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
-                  <polyline points="17 21 17 13 7 13 7 21"/>
-                  <polyline points="7 3 7 8 15 8"/>
-                </svg>
-              </button>
-            </div>
+            <button class="btn-icon" id="btn-save-preset" title="Lưu chain hiện tại thành preset">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+            </button>
           </div>
           <div class="preset-list" id="preset-list"></div>
         </div>
@@ -135,6 +130,54 @@
         <canvas id="histogram" width="160" height="48"></canvas>
       </div>
     </main>
+  </div>
+</div>
+
+<!-- Settings dialog -->
+<div id="settings-overlay" class="kb-overlay" style="display:none">
+  <div class="kb-modal settings-modal">
+    <div class="kb-header">
+      <span class="kb-title">Settings</span>
+      <button id="settings-close" class="btn-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="kb-body">
+
+      <div class="kb-group">
+        <p class="kb-group-label">Ảnh</p>
+        <div class="settings-row">
+          <label class="settings-label">Kích thước tối đa</label>
+          <div class="settings-control">
+            <select id="setting-max-size">
+              <option value="800">800 px</option>
+              <option value="1200" selected>1200 px</option>
+              <option value="1600">1600 px</option>
+              <option value="2400">2400 px</option>
+              <option value="0">Gốc (không resize)</option>
+            </select>
+            <span class="settings-hint">Ảnh lớn hơn sẽ bị scale xuống khi upload</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kb-group">
+        <p class="kb-group-label">Presets</p>
+        <div class="settings-row">
+          <label class="settings-label">Export user presets</label>
+          <button class="btn btn-secondary settings-btn" id="settings-export-preset">Tải xuống JSON</button>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Import presets</label>
+          <button class="btn btn-secondary settings-btn" id="settings-import-preset">Chọn file JSON</button>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Xóa tất cả user presets</label>
+          <button class="btn settings-btn settings-btn-danger" id="settings-clear-presets">Xóa hết</button>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
