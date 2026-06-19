@@ -81,9 +81,18 @@ aside {
 
 /* ── Param panel ── */
 .param-row { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
-.param-label { display: flex; justify-content: space-between; font-size: 11px; }
+.param-label { display: flex; justify-content: space-between; align-items: center; font-size: 11px; gap: 6px; }
 .param-value { color: var(--muted); }
 input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; height: 4px; }
+
+input.param-num {
+  width: 54px; background: var(--surface3); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text); font-size: 11px; padding: 2px 5px;
+  text-align: right; -moz-appearance: textfield;
+}
+input.param-num:focus { outline: none; border-color: var(--accent); }
+input.param-num::-webkit-inner-spin-button,
+input.param-num::-webkit-outer-spin-button { opacity: 0.4; }
 
 /* ── Layer chain ── */
 .chain-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }

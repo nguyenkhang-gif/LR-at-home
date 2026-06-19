@@ -313,6 +313,53 @@ function buildParamHint(filter, params) {
   return parts.join(' · ');
 }
 
+function makeParamRow({ label, min, max, step, value, display, onChange, onCommit }) {
+  const row = document.createElement('div');
+  row.className = 'param-row';
+
+  const labelEl = document.createElement('div');
+  labelEl.className = 'param-label';
+  labelEl.innerHTML = `<span>${label}</span>`;
+
+  const numInput = document.createElement('input');
+  numInput.type = 'number';
+  numInput.className = 'param-num';
+  numInput.min = min; numInput.max = max; numInput.step = step;
+  numInput.value = step < 1 ? Number(value).toFixed(2) : Math.round(value);
+  labelEl.appendChild(numInput);
+
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = min; slider.max = max; slider.step = step;
+  slider.value = value;
+
+  let applyDebounce, snapDebounce;
+
+  function applyValue(v) {
+    const clamped = Math.min(max, Math.max(min, v));
+    slider.value = clamped;
+    numInput.value = step < 1 ? Number(clamped).toFixed(2) : Math.round(clamped);
+    clearTimeout(applyDebounce);
+    applyDebounce = setTimeout(() => onChange(clamped), 50);
+    clearTimeout(snapDebounce);
+    snapDebounce = setTimeout(onCommit, 600);
+  }
+
+  slider.addEventListener('input', () => applyValue(parseFloat(slider.value)));
+
+  numInput.addEventListener('input', () => {
+    const v = parseFloat(numInput.value);
+    if (!isNaN(v)) applyValue(v);
+  });
+  numInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { numInput.blur(); applyValue(parseFloat(numInput.value) || 0); }
+  });
+
+  row.appendChild(labelEl);
+  row.appendChild(slider);
+  return row;
+}
+
 function renderParamPanel() {
   const layer = filterChain.find((l) => l.uid === selectedLayerUid);
   if (!layer) { paramSection.style.display = 'none'; return; }
@@ -323,53 +370,32 @@ function renderParamPanel() {
   paramPanel.innerHTML = '';
 
   // Opacity row (always first)
-  const opRow = document.createElement('div');
-  opRow.className = 'param-row';
-  const opValId = `pv-${layer.uid}-opacity`;
-  opRow.innerHTML = `
-    <div class="param-label">
-      <span>Độ mờ</span>
-      <span class="param-value" id="${opValId}">${Math.round((layer.opacity ?? 1) * 100)}%</span>
-    </div>
-    <input type="range" min="0" max="1" step="0.01" value="${layer.opacity ?? 1}" />
-  `;
-  opRow.querySelector('input').addEventListener('input', (e) => {
-    layer.opacity = parseFloat(e.target.value);
-    document.getElementById(opValId).textContent = Math.round(layer.opacity * 100) + '%';
-    clearTimeout(opRow._db);
-    opRow._db = setTimeout(applyChain, 50);
-    clearTimeout(opRow._snap);
-    opRow._snap = setTimeout(snapshot, 600);
-  });
-  paramPanel.appendChild(opRow);
+  paramPanel.appendChild(makeParamRow({
+    label: 'Độ mờ',
+    min: 0, max: 100, step: 1,
+    value: Math.round((layer.opacity ?? 1) * 100),
+    display: (v) => v + '%',
+    onChange: (v) => {
+      layer.opacity = v / 100;
+      applyChain();
+    },
+    onCommit: snapshot,
+  }));
 
   for (const p of filter.params) {
-    const val = layer.params[p.id] ?? p.default;
-    const row = document.createElement('div');
-    row.className = 'param-row';
-    const valId = `pv-${layer.uid}-${p.id}`;
-    row.innerHTML = `
-      <div class="param-label">
-        <span>${p.label}</span>
-        <span class="param-value" id="${valId}">${fmt(val, p.step)}</span>
-      </div>
-      <input type="range" min="${p.min}" max="${p.max}" step="${p.step}" value="${val}" />
-    `;
-    const slider = row.querySelector('input');
-    let debounce;
-    let snapDebounce;
-    slider.addEventListener('input', () => {
-      const v = parseFloat(slider.value);
-      layer.params[p.id] = v;
-      document.getElementById(valId).textContent = fmt(v, p.step);
-      const hint = layerList.querySelector(`[data-uid="${layer.uid}"] .layer-param-hint`);
-      if (hint) hint.textContent = buildParamHint(filter, layer.params);
-      clearTimeout(debounce);
-      debounce = setTimeout(applyChain, 50);
-      clearTimeout(snapDebounce);
-      snapDebounce = setTimeout(snapshot, 600);
-    });
-    paramPanel.appendChild(row);
+    paramPanel.appendChild(makeParamRow({
+      label: p.label,
+      min: p.min, max: p.max, step: p.step,
+      value: layer.params[p.id] ?? p.default,
+      display: (v) => fmt(v, p.step),
+      onChange: (v) => {
+        layer.params[p.id] = v;
+        const hint = layerList.querySelector(`[data-uid="${layer.uid}"] .layer-param-hint`);
+        if (hint) hint.textContent = buildParamHint(filter, layer.params);
+        applyChain();
+      },
+      onCommit: snapshot,
+    }));
   }
 }
 
