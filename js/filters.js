@@ -203,16 +203,19 @@ export const FILTERS = [
     params: [
       { id: 'shadow_hue', label: 'Shadow Hue',  min: 0, max: 360, default: 180, step: 1 },
       { id: 'shadow_sat', label: 'Shadow Sat',  min: 0, max: 1,   default: 0,   step: 0.01 },
+      { id: 'shadow_lum', label: 'Shadow Lum',  min: -1, max: 1,  default: 0,   step: 0.01 },
       { id: 'mid_hue',    label: 'Mid Hue',     min: 0, max: 360, default: 0,   step: 1 },
       { id: 'mid_sat',    label: 'Mid Sat',     min: 0, max: 1,   default: 0,   step: 0.01 },
+      { id: 'mid_lum',    label: 'Mid Lum',     min: -1, max: 1,  default: 0,   step: 0.01 },
       { id: 'hi_hue',     label: 'Highlight Hue', min: 0, max: 360, default: 30, step: 1 },
       { id: 'hi_sat',     label: 'Highlight Sat', min: 0, max: 1,   default: 0,  step: 0.01 },
+      { id: 'hi_lum',     label: 'Highlight Lum', min: -1, max: 1,  default: 0,  step: 0.01 },
     ],
     apply: (wasm, data, p) => wasm.color_grade(
       data.data,
-      p.shadow_hue, p.shadow_sat,
-      p.mid_hue,    p.mid_sat,
-      p.hi_hue,     p.hi_sat,
+      p.shadow_hue, p.shadow_sat, p.shadow_lum ?? 0,
+      p.mid_hue,    p.mid_sat,    p.mid_lum    ?? 0,
+      p.hi_hue,     p.hi_sat,     p.hi_lum     ?? 0,
     ),
   },
 ];

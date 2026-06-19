@@ -433,14 +433,14 @@ fn box_blur_copy(data: &[u8], w: usize, h: usize, radius: usize) -> Vec<u8> {
     out
 }
 
-// Color grade: tint shadows/midtones/highlights with independent hue+saturation
-// shadow_hue/mid_hue/hi_hue: 0–360; shadow_sat/mid_sat/hi_sat: 0–1
+// Color grade: tint + lighten/darken shadows/midtones/highlights independently
+// hue: 0–360; sat: 0–1; lum: -1 (darken) to 1 (brighten)
 #[wasm_bindgen]
 pub fn color_grade(
     data: &mut [u8],
-    shadow_hue: f32, shadow_sat: f32,
-    mid_hue: f32,    mid_sat: f32,
-    hi_hue: f32,     hi_sat: f32,
+    shadow_hue: f32, shadow_sat: f32, shadow_lum: f32,
+    mid_hue: f32,    mid_sat: f32,    mid_lum: f32,
+    hi_hue: f32,     hi_sat: f32,     hi_lum: f32,
 ) {
     // Convert each zone hue to a pure-saturation RGB color (L=0.5 in HSL)
     let (sr, sg, sb) = hsl_to_rgb(shadow_hue / 360.0, 1.0, 0.5);
@@ -470,10 +470,11 @@ pub fn color_grade(
         let tg = w_s * sg * ss + w_m * mg * ms + w_h * hg * hs;
         let tb = w_s * sb * ss + w_m * mb * ms + w_h * hb * hs;
 
-        // Screen blend: result = 1 - (1-pixel)*(1-tint)  →  pixel + tint - pixel*tint
-        px[0] = ((r + tr - r * tr).clamp(0.0, 1.0) * 255.0) as u8;
-        px[1] = ((g + tg - g * tg).clamp(0.0, 1.0) * 255.0) as u8;
-        px[2] = ((b + tb - b * tb).clamp(0.0, 1.0) * 255.0) as u8;
+        // Screen blend for tint, then zone-weighted luminance offset
+        let lum_adj = (w_s * shadow_lum + w_m * mid_lum + w_h * hi_lum).clamp(-1.0, 1.0) * 0.5;
+        px[0] = ((r + tr - r * tr + lum_adj).clamp(0.0, 1.0) * 255.0) as u8;
+        px[1] = ((g + tg - g * tg + lum_adj).clamp(0.0, 1.0) * 255.0) as u8;
+        px[2] = ((b + tb - b * tb + lum_adj).clamp(0.0, 1.0) * 255.0) as u8;
     }
 }
 

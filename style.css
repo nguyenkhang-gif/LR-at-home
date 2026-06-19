@@ -331,6 +331,34 @@ select {
 }
 .hsl-color-btn.active .hsl-color-tick { background: var(--accent); }
 
+/* ── Color Grading Wheels ── */
+.cg-wheels {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 4px 0 10px;
+}
+.cg-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+.cg-wheel {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  cursor: crosshair;
+  touch-action: none;
+  border: 1px solid var(--border);
+}
+.cg-zone-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+}
+
 /* ── Tone Curve ── */
 .tone-curve-canvas {
   display: block;

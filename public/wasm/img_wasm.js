@@ -60,15 +60,18 @@ export function clarity(data, width, height, amount) {
  * @param {Uint8Array} data
  * @param {number} shadow_hue
  * @param {number} shadow_sat
+ * @param {number} shadow_lum
  * @param {number} mid_hue
  * @param {number} mid_sat
+ * @param {number} mid_lum
  * @param {number} hi_hue
  * @param {number} hi_sat
+ * @param {number} hi_lum
  */
-export function color_grade(data, shadow_hue, shadow_sat, mid_hue, mid_sat, hi_hue, hi_sat) {
+export function color_grade(data, shadow_hue, shadow_sat, shadow_lum, mid_hue, mid_sat, mid_lum, hi_hue, hi_sat, hi_lum) {
     var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
     var len0 = WASM_VECTOR_LEN;
-    wasm.color_grade(ptr0, len0, data, shadow_hue, shadow_sat, mid_hue, mid_sat, hi_hue, hi_sat);
+    wasm.color_grade(ptr0, len0, data, shadow_hue, shadow_sat, shadow_lum, mid_hue, mid_sat, mid_lum, hi_hue, hi_sat, hi_lum);
 }
 
 /**

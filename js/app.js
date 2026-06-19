@@ -389,6 +389,8 @@ function renderParamPanel() {
     renderHslPanel(layer, filter);
   } else if (filter.id === 'tone_curve') {
     renderToneCurvePanel(layer, filter);
+  } else if (filter.id === 'color_grade') {
+    renderColorGradePanel(layer, filter);
   } else {
     for (const p of filter.params) {
       paramPanel.appendChild(makeParamRow({
@@ -461,6 +463,122 @@ function renderHslPanel(layer, filter) {
       onCommit: snapshot,
     }));
   }
+}
+
+// ── Color Grading Wheels ───────────────────────────────────────────────────
+const CG_ZONES = [
+  { label: 'Shadows',    hueId: 'shadow_hue', satId: 'shadow_sat', lumId: 'shadow_lum' },
+  { label: 'Midtones',   hueId: 'mid_hue',    satId: 'mid_sat',    lumId: 'mid_lum' },
+  { label: 'Highlights', hueId: 'hi_hue',     satId: 'hi_sat',     lumId: 'hi_lum' },
+];
+
+function cgHslToRgb(h, s, l) {
+  if (s === 0) { const v = Math.round(l * 255); return [v, v, v]; }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  function ch(t) {
+    if (t < 0) t += 1; if (t > 1) t -= 1;
+    if (t < 1/6) return Math.round((p + (q-p)*6*t) * 255);
+    if (t < 1/2) return Math.round(q * 255);
+    if (t < 2/3) return Math.round((p + (q-p)*(2/3-t)*6) * 255);
+    return Math.round(p * 255);
+  }
+  return [ch(h + 1/3), ch(h), ch(h - 1/3)];
+}
+
+function drawColorWheel(canvas, hue, sat) {
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const r = Math.min(W, H) / 2 - 1;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(W, H);
+
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const dx = x - cx, dy = y - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist <= r) {
+        const h = ((Math.atan2(dy, dx) / (Math.PI * 2)) + 1) % 1;
+        const s = dist / r;
+        const [rr, gg, bb] = cgHslToRgb(h, s, 0.5);
+        const i = (y * W + x) * 4;
+        img.data[i] = rr; img.data[i+1] = gg; img.data[i+2] = bb; img.data[i+3] = 255;
+      }
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  // Indicator dot
+  const angle = (hue / 360) * Math.PI * 2;
+  const dotX = cx + Math.cos(angle) * sat * r;
+  const dotY = cy + Math.sin(angle) * sat * r;
+  ctx.fillStyle = sat > 0.5 ? '#fff' : '#000';
+  ctx.strokeStyle = sat > 0.5 ? '#000' : '#fff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(dotX, dotY, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+}
+
+function renderColorGradePanel(layer, filter) {
+  const wheelsRow = document.createElement('div');
+  wheelsRow.className = 'cg-wheels';
+
+  CG_ZONES.forEach(({ label, hueId, satId }) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'cg-zone';
+
+    const cvs = document.createElement('canvas');
+    cvs.width = 64; cvs.height = 64;
+    cvs.className = 'cg-wheel';
+
+    const getHue = () => layer.params[hueId] ?? filter.params.find((p) => p.id === hueId).default;
+    const getSat = () => layer.params[satId] ?? filter.params.find((p) => p.id === satId).default;
+    const redraw = () => drawColorWheel(cvs, getHue(), getSat());
+    redraw();
+
+    cvs.addEventListener('mousedown', (e) => {
+      function update(ev) {
+        const rect = cvs.getBoundingClientRect();
+        const r = Math.min(rect.width, rect.height) / 2 - 1;
+        const dx = ev.clientX - rect.left - rect.width / 2;
+        const dy = ev.clientY - rect.top - rect.height / 2;
+        layer.params[hueId] = ((Math.atan2(dy, dx) / (Math.PI * 2)) * 360 + 360) % 360;
+        layer.params[satId] = Math.min(1, Math.sqrt(dx*dx + dy*dy) / r);
+        redraw(); applyChain();
+      }
+      update(e);
+      const onMove = (ev) => update(ev);
+      const onUp = () => {
+        snapshot();
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    const lbl = document.createElement('p');
+    lbl.className = 'cg-zone-label';
+    lbl.textContent = label;
+
+    wrap.appendChild(cvs);
+    wrap.appendChild(lbl);
+    wheelsRow.appendChild(wrap);
+  });
+
+  paramPanel.appendChild(wheelsRow);
+
+  // Lum sliders below the wheels
+  CG_ZONES.forEach(({ label, lumId }) => {
+    const p = filter.params.find((x) => x.id === lumId);
+    paramPanel.appendChild(makeParamRow({
+      label: label.slice(0, 3) + ' Lum',
+      min: p.min, max: p.max, step: p.step,
+      value: layer.params[lumId] ?? p.default,
+      display: (v) => fmt(v, p.step),
+      onChange: (v) => { layer.params[lumId] = v; applyChain(); },
+      onCommit: snapshot,
+    }));
+  });
 }
 
 const CURVE_INPUT_X = [0, 64, 128, 192, 255];
