@@ -1,6 +1,6 @@
 import { getWasm } from './wasmLoader.js';
 import { FILTERS, FILTER_GROUPS } from './filters.js';
-import { BUILTIN_PRESETS, loadUserPresets, saveUserPreset, deleteUserPreset } from './presets.js';
+import { BUILTIN_PRESETS, loadUserPresets, saveUserPreset, deleteUserPreset, exportPresets, importPresets } from './presets.js';
 
 // ── State ──────────────────────────────────────────────────────────────────
 let wasm = null;
@@ -45,6 +45,8 @@ const emptyHint = document.getElementById('empty-hint');
 const uploadName = document.getElementById('upload-name');
 const presetList = document.getElementById('preset-list');
 const btnSavePreset = document.getElementById('btn-save-preset');
+const btnExportPreset = document.getElementById('btn-export-preset');
+const btnImportPreset = document.getElementById('btn-import-preset');
 
 // ── WASM init ──────────────────────────────────────────────────────────────
 getWasm()
@@ -544,6 +546,27 @@ function renderPresets() {
     presetList.appendChild(item);
   }
 }
+
+btnExportPreset.addEventListener('click', () => {
+  if (!exportPresets()) alert('Chưa có user preset nào để export.');
+});
+
+const importFileInput = document.createElement('input');
+importFileInput.type = 'file';
+importFileInput.accept = '.json,application/json';
+importFileInput.addEventListener('change', async () => {
+  const file = importFileInput.files[0];
+  if (!file) return;
+  importFileInput.value = '';
+  try {
+    const added = await importPresets(file);
+    renderPresets();
+    alert(`Đã import ${added} preset mới.`);
+  } catch (err) {
+    alert(`Import thất bại: ${err.message}`);
+  }
+});
+btnImportPreset.addEventListener('click', () => importFileInput.click());
 
 btnSavePreset.addEventListener('click', () => {
   if (filterChain.length === 0) { alert('Chưa có filter nào trong chain.'); return; }
