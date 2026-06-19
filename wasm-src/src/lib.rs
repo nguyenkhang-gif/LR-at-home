@@ -187,6 +187,47 @@ pub fn hue_rotate(data: &mut [u8], degrees: f32) {
     }
 }
 
+#[wasm_bindgen]
+pub fn vignette(data: &mut [u8], width: u32, height: u32, strength: f32) {
+    let w = width as usize;
+    let h = height as usize;
+    let cx = w as f32 / 2.0;
+    let cy = h as f32 / 2.0;
+    let max_dist = (cx * cx + cy * cy).sqrt();
+    let s = strength.clamp(0.0, 1.0);
+
+    for y in 0..h {
+        for x in 0..w {
+            let dx = x as f32 - cx;
+            let dy = y as f32 - cy;
+            let dist = (dx * dx + dy * dy).sqrt() / max_dist;
+            let factor = 1.0 - s * dist * dist;
+            let idx = (y * w + x) * 4;
+            data[idx]     = (data[idx]     as f32 * factor).clamp(0.0, 255.0) as u8;
+            data[idx + 1] = (data[idx + 1] as f32 * factor).clamp(0.0, 255.0) as u8;
+            data[idx + 2] = (data[idx + 2] as f32 * factor).clamp(0.0, 255.0) as u8;
+        }
+    }
+}
+
+#[wasm_bindgen]
+pub fn grain(data: &mut [u8], amount: f32) {
+    let a = amount.clamp(0.0, 1.0) * 128.0;
+    for (i, px) in data.chunks_mut(4).enumerate() {
+        let noise = (hash(i as u32) as f32 / 127.5 - 1.0) * a;
+        px[0] = (px[0] as f32 + noise).clamp(0.0, 255.0) as u8;
+        px[1] = (px[1] as f32 + noise).clamp(0.0, 255.0) as u8;
+        px[2] = (px[2] as f32 + noise).clamp(0.0, 255.0) as u8;
+    }
+}
+
+fn hash(mut x: u32) -> u8 {
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    (x & 0xFF) as u8
+}
+
 fn lerp_u8(a: u8, b: u8, t: f32) -> u8 {
     (a as f32 + (b as f32 - a as f32) * t).clamp(0.0, 255.0) as u8
 }

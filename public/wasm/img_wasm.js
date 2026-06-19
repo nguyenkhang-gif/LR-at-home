@@ -46,6 +46,16 @@ export function edge_detect(data, width, height, sensitivity) {
 
 /**
  * @param {Uint8Array} data
+ * @param {number} amount
+ */
+export function grain(data, amount) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.grain(ptr0, len0, data, amount);
+}
+
+/**
+ * @param {Uint8Array} data
  * @param {number} intensity
  */
 export function grayscale(data, intensity) {
@@ -114,6 +124,18 @@ export function threshold(data, value) {
     var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
     var len0 = WASM_VECTOR_LEN;
     wasm.threshold(ptr0, len0, data, value);
+}
+
+/**
+ * @param {Uint8Array} data
+ * @param {number} width
+ * @param {number} height
+ * @param {number} strength
+ */
+export function vignette(data, width, height, strength) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.vignette(ptr0, len0, data, width, height, strength);
 }
 function __wbg_get_imports() {
     const import0 = {

@@ -3,6 +3,7 @@ export const FILTER_GROUPS = [
   { label: 'Màu sắc', ids: ['grayscale', 'sepia', 'saturation', 'hue_rotate', 'invert'] },
   { label: 'Chi tiết', ids: ['box_blur', 'sharpen'] },
   { label: 'Nghệ thuật', ids: ['edge_detect', 'threshold'] },
+  { label: 'Hiệu ứng', ids: ['vignette', 'grain'] },
 ];
 
 export const FILTERS = [
@@ -55,6 +56,16 @@ export const FILTERS = [
     id: 'saturation', name: 'Bão hòa màu',
     params: [{ id: 'factor', label: 'Hệ số', min: 0, max: 3, default: 1.5, step: 0.01 }],
     apply: (wasm, data, p) => wasm.saturation(data.data, p.factor),
+  },
+  {
+    id: 'vignette', name: 'Vignette',
+    params: [{ id: 'strength', label: 'Cường độ', min: 0, max: 1, default: 0.7, step: 0.01 }],
+    apply: (wasm, data, p) => wasm.vignette(data.data, data.width, data.height, p.strength),
+  },
+  {
+    id: 'grain', name: 'Film Grain',
+    params: [{ id: 'amount', label: 'Lượng', min: 0, max: 1, default: 0.2, step: 0.01 }],
+    apply: (wasm, data, p) => wasm.grain(data.data, p.amount),
   },
   {
     id: 'hue_rotate', name: 'Xoay màu sắc',

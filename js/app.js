@@ -127,7 +127,7 @@ function addLayer(filterId) {
   const filter = FILTERS.find((f) => f.id === filterId);
   const params = {};
   for (const p of filter.params) params[p.id] = p.default;
-  const layer = { uid: nextUid++, filterId, params, visible: true };
+  const layer = { uid: nextUid++, filterId, params, visible: true, opacity: 1 };
   filterChain.push(layer);
   selectedLayerUid = layer.uid;
   renderChainUI();
@@ -283,6 +283,25 @@ function renderParamPanel() {
   paramTitle.textContent = filter.name;
   paramPanel.innerHTML = '';
 
+  // Opacity row (always first)
+  const opRow = document.createElement('div');
+  opRow.className = 'param-row';
+  const opValId = `pv-${layer.uid}-opacity`;
+  opRow.innerHTML = `
+    <div class="param-label">
+      <span>Độ mờ</span>
+      <span class="param-value" id="${opValId}">${Math.round((layer.opacity ?? 1) * 100)}%</span>
+    </div>
+    <input type="range" min="0" max="1" step="0.01" value="${layer.opacity ?? 1}" />
+  `;
+  opRow.querySelector('input').addEventListener('input', (e) => {
+    layer.opacity = parseFloat(e.target.value);
+    document.getElementById(opValId).textContent = Math.round(layer.opacity * 100) + '%';
+    clearTimeout(opRow._db);
+    opRow._db = setTimeout(applyChain, 50);
+  });
+  paramPanel.appendChild(opRow);
+
   for (const p of filter.params) {
     const val = layer.params[p.id] ?? p.default;
     const row = document.createElement('div');
@@ -332,12 +351,24 @@ function applyChain() {
   for (const layer of filterChain) {
     if (!layer.visible) continue;
     const filter = FILTERS.find((f) => f.id === layer.filterId);
-    filter.apply(wasm, work, layer.params);
+    if (layer.opacity >= 1) {
+      filter.apply(wasm, work, layer.params);
+    } else {
+      const before = new Uint8ClampedArray(work.data);
+      filter.apply(wasm, work, layer.params);
+      const o = layer.opacity, o1 = 1 - o;
+      for (let i = 0; i < work.data.length; i += 4) {
+        work.data[i]   = before[i]   * o1 + work.data[i]   * o;
+        work.data[i+1] = before[i+1] * o1 + work.data[i+1] * o;
+        work.data[i+2] = before[i+2] * o1 + work.data[i+2] * o;
+      }
+    }
   }
   const elapsed = performance.now() - t0;
 
   outputCanvas.getContext('2d').putImageData(work, 0, 0);
   splitOutCanvas.getContext('2d').putImageData(work, 0, 0);
+  drawHistogram(work);
 
   const mpxs = (src.width * src.height / elapsed / 1000).toFixed(1);
   statsBar.innerHTML = `
@@ -346,6 +377,42 @@ function applyChain() {
     <div class="stat-card"><span class="stat-label">Tốc độ</span><span class="stat-value">${mpxs} Mpx/s</span></div>
     <div class="stat-card"><span class="stat-label">Layers</span><span class="stat-value">${filterChain.length}</span></div>
   `;
+}
+
+// ── Histogram ──────────────────────────────────────────────────────────────
+const histCanvas = document.getElementById('histogram');
+const histCtx = histCanvas.getContext('2d');
+
+function drawHistogram(imageData) {
+  const W = histCanvas.width, H = histCanvas.height;
+  const r = new Uint32Array(256), g = new Uint32Array(256), b = new Uint32Array(256);
+  const d = imageData.data;
+  for (let i = 0; i < d.length; i += 4) { r[d[i]]++; g[d[i+1]]++; b[d[i+2]]++; }
+
+  const peak = Math.max(...r, ...g, ...b) || 1;
+
+  histCtx.clearRect(0, 0, W, H);
+  histCtx.fillStyle = '#0a0a0f';
+  histCtx.fillRect(0, 0, W, H);
+
+  const channels = [
+    { data: r, color: 'rgba(239,68,68,0.6)' },
+    { data: g, color: 'rgba(34,197,94,0.6)' },
+    { data: b, color: 'rgba(79,127,255,0.6)' },
+  ];
+  for (const ch of channels) {
+    histCtx.beginPath();
+    histCtx.moveTo(0, H);
+    for (let i = 0; i < 256; i++) {
+      const x = (i / 255) * W;
+      const y = H - (ch.data[i] / peak) * (H - 2);
+      i === 0 ? histCtx.moveTo(x, y) : histCtx.lineTo(x, y);
+    }
+    histCtx.lineTo(W, H);
+    histCtx.closePath();
+    histCtx.fillStyle = ch.color;
+    histCtx.fill();
+  }
 }
 
 // ── Action buttons ─────────────────────────────────────────────────────────
@@ -456,6 +523,7 @@ function renderPresets() {
         filterId,
         params: { ...params },
         visible: true,
+        opacity: 1,
       }));
       selectedLayerUid = filterChain.length > 0 ? filterChain[filterChain.length - 1].uid : null;
       renderChainUI();
