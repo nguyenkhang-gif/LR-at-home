@@ -1,5 +1,5 @@
 export const FILTER_GROUPS = [
-  { label: 'Ánh sáng', ids: ['brightness', 'contrast'] },
+  { label: 'Ánh sáng', ids: ['exposure', 'brightness', 'contrast'] },
   { label: 'Màu sắc', ids: ['grayscale', 'sepia', 'saturation', 'hue_rotate', 'invert'] },
   { label: 'Chi tiết', ids: ['box_blur', 'sharpen'] },
   { label: 'Nghệ thuật', ids: ['edge_detect', 'threshold'] },
@@ -21,6 +21,11 @@ export const FILTERS = [
     id: 'sepia', name: 'Sepia',
     params: [{ id: 'intensity', label: 'Cường độ', min: 0, max: 1, default: 1, step: 0.01 }],
     apply: (wasm, data, p) => wasm.sepia(data.data, p.intensity),
+  },
+  {
+    id: 'exposure', name: 'Exposure',
+    params: [{ id: 'stops', label: 'Stops', min: -5, max: 5, default: 0, step: 0.1 }],
+    apply: (wasm, data, p) => wasm.exposure(data.data, p.stops),
   },
   {
     id: 'brightness', name: 'Sáng',

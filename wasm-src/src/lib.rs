@@ -48,6 +48,16 @@ pub fn brightness(data: &mut [u8], value: f32) {
 }
 
 #[wasm_bindgen]
+pub fn exposure(data: &mut [u8], stops: f32) {
+    let factor = (2.0f32).powf(stops.clamp(-5.0, 5.0));
+    for px in data.chunks_mut(4) {
+        px[0] = (px[0] as f32 * factor).clamp(0.0, 255.0) as u8;
+        px[1] = (px[1] as f32 * factor).clamp(0.0, 255.0) as u8;
+        px[2] = (px[2] as f32 * factor).clamp(0.0, 255.0) as u8;
+    }
+}
+
+#[wasm_bindgen]
 pub fn contrast(data: &mut [u8], factor: f32) {
     for px in data.chunks_mut(4) {
         px[0] = ((factor * (px[0] as f32 - 128.0)) + 128.0).clamp(0.0, 255.0) as u8;

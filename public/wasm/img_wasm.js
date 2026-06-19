@@ -46,6 +46,16 @@ export function edge_detect(data, width, height, sensitivity) {
 
 /**
  * @param {Uint8Array} data
+ * @param {number} stops
+ */
+export function exposure(data, stops) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.exposure(ptr0, len0, data, stops);
+}
+
+/**
+ * @param {Uint8Array} data
  * @param {number} amount
  */
 export function grain(data, amount) {

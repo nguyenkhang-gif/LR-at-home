@@ -5,6 +5,7 @@ export const box_blur: (a: number, b: number, c: any, d: number, e: number, f: n
 export const brightness: (a: number, b: number, c: any, d: number) => void;
 export const contrast: (a: number, b: number, c: any, d: number) => void;
 export const edge_detect: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
+export const exposure: (a: number, b: number, c: any, d: number) => void;
 export const grain: (a: number, b: number, c: any, d: number) => void;
 export const grayscale: (a: number, b: number, c: any, d: number) => void;
 export const hue_rotate: (a: number, b: number, c: any, d: number) => void;

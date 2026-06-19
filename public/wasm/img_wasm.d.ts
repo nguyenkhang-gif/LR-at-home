@@ -9,6 +9,8 @@ export function contrast(data: Uint8Array, factor: number): void;
 
 export function edge_detect(data: Uint8Array, width: number, height: number, sensitivity: number): void;
 
+export function exposure(data: Uint8Array, stops: number): void;
+
 export function grain(data: Uint8Array, amount: number): void;
 
 export function grayscale(data: Uint8Array, intensity: number): void;
@@ -35,6 +37,7 @@ export interface InitOutput {
     readonly brightness: (a: number, b: number, c: any, d: number) => void;
     readonly contrast: (a: number, b: number, c: any, d: number) => void;
     readonly edge_detect: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
+    readonly exposure: (a: number, b: number, c: any, d: number) => void;
     readonly grain: (a: number, b: number, c: any, d: number) => void;
     readonly grayscale: (a: number, b: number, c: any, d: number) => void;
     readonly hue_rotate: (a: number, b: number, c: any, d: number) => void;
