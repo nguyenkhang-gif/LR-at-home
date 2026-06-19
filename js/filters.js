@@ -1,5 +1,5 @@
 export const FILTER_GROUPS = [
-  { label: 'Light', ids: ['exposure', 'highlights', 'shadows', 'whites', 'blacks', 'brightness', 'contrast', 'tone_curve'] },
+  { label: 'Light', ids: ['exposure', 'highlights', 'shadows', 'whites', 'blacks', 'brightness', 'contrast', 'tone_curve', 'parametric_curve'] },
   { label: 'Color', ids: ['temperature', 'tint', 'saturation', 'hue_rotate', 'color_grade', 'hsl_adjust'] },
   { label: 'Presence', ids: ['clarity', 'dehaze', 'sharpen', 'box_blur'] },
   { label: 'Creative', ids: ['grayscale', 'sepia', 'invert', 'vignette', 'grain'] },
@@ -29,6 +29,26 @@ export function buildCurveLut(pts) {
     lut[x] = Math.round(Math.max(0, Math.min(255, val)));
   }
   return lut;
+}
+
+export function buildParametricLut(p) {
+  const sh = p.shadows    ?? 0;
+  const dk = p.darks      ?? 0;
+  const lt = p.lights     ?? 0;
+  const hi = p.highlights ?? 0;
+  const s1 = p.split1     ?? 64;
+  const s2 = p.split2     ?? 128;
+  const s3 = p.split3     ?? 192;
+  const clamp = (v) => Math.max(0, Math.min(255, v));
+  const pts = [
+    [0,   0],
+    [s1 / 2,             clamp(s1 / 2             + sh * 0.5)],
+    [(s1 + s2) / 2,      clamp((s1 + s2) / 2      + dk * 0.5)],
+    [(s2 + s3) / 2,      clamp((s2 + s3) / 2      + lt * 0.5)],
+    [(s3 + 255) / 2,     clamp((s3 + 255) / 2     + hi * 0.5)],
+    [255, 255],
+  ];
+  return buildCurveLut(pts);
 }
 
 export const FILTERS = [
@@ -220,5 +240,22 @@ export const FILTERS = [
       p.mid_hue,    p.mid_sat,    p.mid_lum    ?? 0,
       p.hi_hue,     p.hi_sat,     p.hi_lum     ?? 0,
     ),
+  },
+  {
+    id: 'parametric_curve', name: 'Parametric Curve',
+    hint: (p) => `S:${Math.round(p.shadows ?? 0)} D:${Math.round(p.darks ?? 0)} L:${Math.round(p.lights ?? 0)} H:${Math.round(p.highlights ?? 0)}`,
+    params: [
+      { id: 'shadows',    label: 'Shadows',    min: -100, max: 100, default: 0, step: 1 },
+      { id: 'darks',      label: 'Darks',      min: -100, max: 100, default: 0, step: 1 },
+      { id: 'lights',     label: 'Lights',     min: -100, max: 100, default: 0, step: 1 },
+      { id: 'highlights', label: 'Highlights', min: -100, max: 100, default: 0, step: 1 },
+      { id: 'split1', label: 'Split 1', min: 10, max: 120, default: 64,  step: 1 },
+      { id: 'split2', label: 'Split 2', min: 60, max: 195, default: 128, step: 1 },
+      { id: 'split3', label: 'Split 3', min: 135, max: 245, default: 192, step: 1 },
+    ],
+    apply: (wasm, data, p) => {
+      const lut = buildParametricLut(p);
+      wasm.apply_lut(data.data, lut);
+    },
   },
 ];

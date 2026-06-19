@@ -1,5 +1,5 @@
 import { getWasm } from './wasmLoader.js';
-import { FILTERS, FILTER_GROUPS, buildCurveLut } from './filters.js';
+import { FILTERS, FILTER_GROUPS, buildCurveLut, buildParametricLut } from './filters.js';
 import { BUILTIN_PRESETS, PRESET_GROUPS, loadUserPresets, saveUserPreset, deleteUserPreset, exportPresets, importPresets } from './presets.js';
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -393,6 +393,8 @@ function renderParamPanel() {
     renderToneCurvePanel(layer, filter);
   } else if (filter.id === 'color_grade') {
     renderColorGradePanel(layer, filter);
+  } else if (filter.id === 'parametric_curve') {
+    renderParametricCurvePanel(layer, filter);
   } else {
     for (const p of filter.params) {
       paramPanel.appendChild(makeParamRow({
@@ -605,6 +607,158 @@ function renderColorGradePanel(layer, filter) {
 
 const CURVE_INPUT_X = [0, 64, 128, 192, 255];
 const CURVE_PARAM_IDS = ['p0', 'p1', 'p2', 'p3', 'p4'];
+
+function renderParametricCurvePanel(layer, filter) {
+  const DISPLAY = 180;
+  const cvs = document.createElement('canvas');
+  cvs.className = 'tone-curve-canvas';
+  paramPanel.appendChild(cvs);
+
+  const ctx = cvs.getContext('2d');
+  let dpr = 1, W = DISPLAY, H = DISPLAY;
+  // which split handle is being dragged (0,1,2) or null
+  let draggingSplit = null;
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.round(DISPLAY * dpr);
+    H = Math.round(DISPLAY * dpr);
+    cvs.width = W;
+    cvs.height = H;
+  }
+  resize();
+
+  function getP(id) {
+    const def = filter.params.find((p) => p.id === id)?.default ?? 0;
+    return layer.params[id] ?? def;
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0d0d14';
+    ctx.fillRect(0, 0, W, H);
+
+    const s1 = getP('split1');
+    const s2 = getP('split2');
+    const s3 = getP('split3');
+
+    // Zone backgrounds (subtle)
+    const zones = [
+      [0, s1, 'rgba(100,140,255,0.04)'],
+      [s1, s2, 'rgba(180,180,255,0.04)'],
+      [s2, s3, 'rgba(255,220,100,0.04)'],
+      [s3, 255, 'rgba(255,255,200,0.06)'],
+    ];
+    zones.forEach(([xa, xb, col]) => {
+      ctx.fillStyle = col;
+      ctx.fillRect((xa / 255) * W, 0, ((xb - xa) / 255) * W, H);
+    });
+
+    // Grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = dpr;
+    for (let i = 1; i < 4; i++) {
+      ctx.beginPath(); ctx.moveTo(i * W / 4, 0); ctx.lineTo(i * W / 4, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * H / 4); ctx.lineTo(W, i * H / 4); ctx.stroke();
+    }
+
+    // Diagonal
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.setLineDash([3 * dpr, 4 * dpr]);
+    ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(W, 0); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Split zone dividers
+    [s1, s2, s3].forEach((sx, i) => {
+      const px = (sx / 255) * W;
+      ctx.strokeStyle = draggingSplit === i ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = dpr;
+      ctx.setLineDash([2 * dpr, 3 * dpr]);
+      ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, H - 10 * dpr); ctx.stroke();
+      ctx.setLineDash([]);
+      // triangle handle at bottom
+      ctx.fillStyle = draggingSplit === i ? '#fff' : 'rgba(255,255,255,0.5)';
+      ctx.beginPath();
+      ctx.moveTo(px, H - 2 * dpr);
+      ctx.lineTo(px - 5 * dpr, H - 10 * dpr);
+      ctx.lineTo(px + 5 * dpr, H - 10 * dpr);
+      ctx.closePath(); ctx.fill();
+    });
+
+    // Curve from parametric LUT
+    const lut = buildParametricLut({
+      shadows: getP('shadows'), darks: getP('darks'),
+      lights: getP('lights'), highlights: getP('highlights'),
+      split1: s1, split2: s2, split3: s3,
+    });
+    ctx.strokeStyle = '#7eb8ff';
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    for (let x = 0; x <= 255; x++) {
+      const px = (x / 255) * W;
+      const py = H - (lut[x] / 255) * H;
+      x === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+
+  function clientToX(e) {
+    const rect = cvs.getBoundingClientRect();
+    return ((e.clientX - rect.left) / rect.width) * W;
+  }
+
+  const HANDLE_Y_THRESHOLD = 14 * dpr;
+
+  cvs.addEventListener('mousedown', (e) => {
+    const rect = cvs.getBoundingClientRect();
+    const mx = ((e.clientX - rect.left) / rect.width) * W;
+    const my = ((e.clientY - rect.top) / rect.height) * H;
+    if (my < H - HANDLE_Y_THRESHOLD) return;
+
+    const splits = ['split1', 'split2', 'split3'];
+    const splitVals = splits.map((id) => (getP(id) / 255) * W);
+    const closest = splitVals.map((px, i) => ({ d: Math.abs(mx - px), i })).sort((a, b) => a.d - b.d)[0];
+    if (closest.d < 14 * dpr) draggingSplit = closest.i;
+    if (draggingSplit === null) return;
+
+    e.preventDefault();
+    const ids = ['split1', 'split2', 'split3'];
+    const mins = [10, 60, 135];
+    const maxs = [120, 195, 245];
+
+    function onMove(ev) {
+      const nx = clientToX(ev);
+      const val = Math.round(Math.max(mins[draggingSplit], Math.min(maxs[draggingSplit], (nx / W) * 255)));
+      layer.params[ids[draggingSplit]] = val;
+      draw();
+      applyChain();
+    }
+    function onUp() {
+      if (draggingSplit !== null) { snapshot(); draggingSplit = null; draw(); }
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  draw();
+
+  // Zone sliders
+  const ZONE_PARAMS = ['shadows', 'darks', 'lights', 'highlights'];
+  ZONE_PARAMS.forEach((id) => {
+    const def = filter.params.find((p) => p.id === id);
+    paramPanel.appendChild(makeParamRow({
+      label: def.label,
+      min: def.min, max: def.max, step: def.step,
+      value: getP(id),
+      display: (v) => fmt(v, 1),
+      onChange: (v) => { layer.params[id] = v; draw(); applyChain(); },
+      onCommit: snapshot,
+    }));
+  });
+}
 
 function renderToneCurvePanel(layer, filter) {
   const DISPLAY = 180;
