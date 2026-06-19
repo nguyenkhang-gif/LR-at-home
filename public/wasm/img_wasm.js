@@ -2,6 +2,16 @@
 
 /**
  * @param {Uint8Array} data
+ * @param {number} value
+ */
+export function blacks(data, value) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.blacks(ptr0, len0, data, value);
+}
+
+/**
+ * @param {Uint8Array} data
  * @param {number} width
  * @param {number} height
  * @param {number} radius
@@ -76,6 +86,16 @@ export function grayscale(data, intensity) {
 
 /**
  * @param {Uint8Array} data
+ * @param {number} value
+ */
+export function highlights(data, value) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.highlights(ptr0, len0, data, value);
+}
+
+/**
+ * @param {Uint8Array} data
  * @param {number} degrees
  */
 export function hue_rotate(data, degrees) {
@@ -116,6 +136,16 @@ export function sepia(data, intensity) {
 
 /**
  * @param {Uint8Array} data
+ * @param {number} value
+ */
+export function shadows(data, value) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.shadows(ptr0, len0, data, value);
+}
+
+/**
+ * @param {Uint8Array} data
  * @param {number} width
  * @param {number} height
  * @param {number} amount
@@ -146,6 +176,16 @@ export function vignette(data, width, height, strength) {
     var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
     var len0 = WASM_VECTOR_LEN;
     wasm.vignette(ptr0, len0, data, width, height, strength);
+}
+
+/**
+ * @param {Uint8Array} data
+ * @param {number} value
+ */
+export function whites(data, value) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.whites(ptr0, len0, data, value);
 }
 function __wbg_get_imports() {
     const import0 = {

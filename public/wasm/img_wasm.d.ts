@@ -1,6 +1,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
+export function blacks(data: Uint8Array, value: number): void;
+
 export function box_blur(data: Uint8Array, width: number, height: number, radius: number): void;
 
 export function brightness(data: Uint8Array, value: number): void;
@@ -15,6 +17,8 @@ export function grain(data: Uint8Array, amount: number): void;
 
 export function grayscale(data: Uint8Array, intensity: number): void;
 
+export function highlights(data: Uint8Array, value: number): void;
+
 export function hue_rotate(data: Uint8Array, degrees: number): void;
 
 export function invert(data: Uint8Array, intensity: number): void;
@@ -23,16 +27,21 @@ export function saturation(data: Uint8Array, factor: number): void;
 
 export function sepia(data: Uint8Array, intensity: number): void;
 
+export function shadows(data: Uint8Array, value: number): void;
+
 export function sharpen(data: Uint8Array, width: number, height: number, amount: number): void;
 
 export function threshold(data: Uint8Array, value: number): void;
 
 export function vignette(data: Uint8Array, width: number, height: number, strength: number): void;
 
+export function whites(data: Uint8Array, value: number): void;
+
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
+    readonly blacks: (a: number, b: number, c: any, d: number) => void;
     readonly box_blur: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
     readonly brightness: (a: number, b: number, c: any, d: number) => void;
     readonly contrast: (a: number, b: number, c: any, d: number) => void;
@@ -40,13 +49,16 @@ export interface InitOutput {
     readonly exposure: (a: number, b: number, c: any, d: number) => void;
     readonly grain: (a: number, b: number, c: any, d: number) => void;
     readonly grayscale: (a: number, b: number, c: any, d: number) => void;
+    readonly highlights: (a: number, b: number, c: any, d: number) => void;
     readonly hue_rotate: (a: number, b: number, c: any, d: number) => void;
     readonly invert: (a: number, b: number, c: any, d: number) => void;
     readonly saturation: (a: number, b: number, c: any, d: number) => void;
     readonly sepia: (a: number, b: number, c: any, d: number) => void;
+    readonly shadows: (a: number, b: number, c: any, d: number) => void;
     readonly sharpen: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
     readonly threshold: (a: number, b: number, c: any, d: number) => void;
     readonly vignette: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
+    readonly whites: (a: number, b: number, c: any, d: number) => void;
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_start: () => void;

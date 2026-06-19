@@ -4,7 +4,7 @@ use wasm_bindgen::prelude::*;
 pub fn grayscale(data: &mut [u8], intensity: f32) {
     let i = intensity.clamp(0.0, 1.0);
     for px in data.chunks_mut(4) {
-        let lum = (0.2126 * px[0] as f32 + 0.7152 * px[1] as f32 + 0.0722 * px[2] as f32) as u8;
+        let lum = luma(px[0], px[1], px[2]) as u8;
         px[0] = lerp_u8(px[0], lum, i);
         px[1] = lerp_u8(px[1], lum, i);
         px[2] = lerp_u8(px[2], lum, i);
@@ -44,6 +44,60 @@ pub fn brightness(data: &mut [u8], value: f32) {
         px[0] = (px[0] as f32 + v).clamp(0.0, 255.0) as u8;
         px[1] = (px[1] as f32 + v).clamp(0.0, 255.0) as u8;
         px[2] = (px[2] as f32 + v).clamp(0.0, 255.0) as u8;
+    }
+}
+
+#[wasm_bindgen]
+pub fn highlights(data: &mut [u8], value: f32) {
+    let v = value.clamp(-1.0, 1.0) * 128.0;
+    for px in data.chunks_mut(4) {
+        let lum = luma(px[0], px[1], px[2]);
+        let w = (lum / 255.0) * (lum / 255.0); // quadratic: bright pixels get full weight
+        let adj = v * w;
+        px[0] = (px[0] as f32 + adj).clamp(0.0, 255.0) as u8;
+        px[1] = (px[1] as f32 + adj).clamp(0.0, 255.0) as u8;
+        px[2] = (px[2] as f32 + adj).clamp(0.0, 255.0) as u8;
+    }
+}
+
+#[wasm_bindgen]
+pub fn shadows(data: &mut [u8], value: f32) {
+    let v = value.clamp(-1.0, 1.0) * 128.0;
+    for px in data.chunks_mut(4) {
+        let lum = luma(px[0], px[1], px[2]);
+        let w = (1.0 - lum / 255.0) * (1.0 - lum / 255.0); // dark pixels get full weight
+        let adj = v * w;
+        px[0] = (px[0] as f32 + adj).clamp(0.0, 255.0) as u8;
+        px[1] = (px[1] as f32 + adj).clamp(0.0, 255.0) as u8;
+        px[2] = (px[2] as f32 + adj).clamp(0.0, 255.0) as u8;
+    }
+}
+
+#[wasm_bindgen]
+pub fn whites(data: &mut [u8], value: f32) {
+    let v = value.clamp(-1.0, 1.0) * 100.0;
+    for px in data.chunks_mut(4) {
+        let lum = luma(px[0], px[1], px[2]);
+        let t = lum / 255.0;
+        let w = t * t * t; // cubic: only very bright pixels
+        let adj = v * w;
+        px[0] = (px[0] as f32 + adj).clamp(0.0, 255.0) as u8;
+        px[1] = (px[1] as f32 + adj).clamp(0.0, 255.0) as u8;
+        px[2] = (px[2] as f32 + adj).clamp(0.0, 255.0) as u8;
+    }
+}
+
+#[wasm_bindgen]
+pub fn blacks(data: &mut [u8], value: f32) {
+    let v = value.clamp(-1.0, 1.0) * 100.0;
+    for px in data.chunks_mut(4) {
+        let lum = luma(px[0], px[1], px[2]);
+        let t = 1.0 - lum / 255.0;
+        let w = t * t * t; // cubic: only very dark pixels
+        let adj = v * w;
+        px[0] = (px[0] as f32 + adj).clamp(0.0, 255.0) as u8;
+        px[1] = (px[1] as f32 + adj).clamp(0.0, 255.0) as u8;
+        px[2] = (px[2] as f32 + adj).clamp(0.0, 255.0) as u8;
     }
 }
 
@@ -121,9 +175,7 @@ pub fn edge_detect(data: &mut [u8], width: u32, height: u32, sensitivity: f32) {
                     let px_y = y + ky_off - 1;
                     let px_x = x + kx_off - 1;
                     let idx = (px_y * w + px_x) * 4;
-                    let lum = 0.2126 * src[idx] as f32
-                        + 0.7152 * src[idx + 1] as f32
-                        + 0.0722 * src[idx + 2] as f32;
+                    let lum = luma(src[idx], src[idx + 1], src[idx + 2]);
                     let k = ky_off * 3 + kx_off;
                     gx += kx[k] * lum;
                     gy += ky[k] * lum;
@@ -141,7 +193,7 @@ pub fn edge_detect(data: &mut [u8], width: u32, height: u32, sensitivity: f32) {
 #[wasm_bindgen]
 pub fn threshold(data: &mut [u8], value: u8) {
     for px in data.chunks_mut(4) {
-        let lum = (0.2126 * px[0] as f32 + 0.7152 * px[1] as f32 + 0.0722 * px[2] as f32) as u8;
+        let lum = luma(px[0], px[1], px[2]) as u8;
         let v = if lum >= value { 255 } else { 0 };
         px[0] = v;
         px[1] = v;
@@ -236,6 +288,10 @@ fn hash(mut x: u32) -> u8 {
     x ^= x >> 17;
     x ^= x << 5;
     (x & 0xFF) as u8
+}
+
+fn luma(r: u8, g: u8, b: u8) -> f32 {
+    0.2126 * r as f32 + 0.7152 * g as f32 + 0.0722 * b as f32
 }
 
 fn lerp_u8(a: u8, b: u8, t: f32) -> u8 {

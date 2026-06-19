@@ -1,5 +1,5 @@
 export const FILTER_GROUPS = [
-  { label: 'Ánh sáng', ids: ['exposure', 'brightness', 'contrast'] },
+  { label: 'Ánh sáng', ids: ['exposure', 'highlights', 'shadows', 'whites', 'blacks', 'brightness', 'contrast'] },
   { label: 'Màu sắc', ids: ['grayscale', 'sepia', 'saturation', 'hue_rotate', 'invert'] },
   { label: 'Chi tiết', ids: ['box_blur', 'sharpen'] },
   { label: 'Nghệ thuật', ids: ['edge_detect', 'threshold'] },
@@ -26,6 +26,26 @@ export const FILTERS = [
     id: 'exposure', name: 'Exposure',
     params: [{ id: 'stops', label: 'Stops', min: -5, max: 5, default: 0, step: 0.1 }],
     apply: (wasm, data, p) => wasm.exposure(data.data, p.stops),
+  },
+  {
+    id: 'highlights', name: 'Highlights',
+    params: [{ id: 'value', label: 'Giá trị', min: -1, max: 1, default: 0, step: 0.01 }],
+    apply: (wasm, data, p) => wasm.highlights(data.data, p.value),
+  },
+  {
+    id: 'shadows', name: 'Shadows',
+    params: [{ id: 'value', label: 'Giá trị', min: -1, max: 1, default: 0, step: 0.01 }],
+    apply: (wasm, data, p) => wasm.shadows(data.data, p.value),
+  },
+  {
+    id: 'whites', name: 'Whites',
+    params: [{ id: 'value', label: 'Giá trị', min: -1, max: 1, default: 0, step: 0.01 }],
+    apply: (wasm, data, p) => wasm.whites(data.data, p.value),
+  },
+  {
+    id: 'blacks', name: 'Blacks',
+    params: [{ id: 'value', label: 'Giá trị', min: -1, max: 1, default: 0, step: 0.01 }],
+    apply: (wasm, data, p) => wasm.blacks(data.data, p.value),
   },
   {
     id: 'brightness', name: 'Sáng',
