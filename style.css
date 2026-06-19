@@ -223,6 +223,43 @@ canvas { max-width: 100%; max-height: 100%; border-radius: 5px; display: block; 
 /* ── Empty hint ── */
 .empty-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); pointer-events: none; }
 
+/* ── Keybind popup ── */
+.kb-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  z-index: 100; display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.kb-modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; width: 340px; max-width: calc(100vw - 32px);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  animation: kb-in 0.15s ease;
+}
+
+@keyframes kb-in {
+  from { opacity: 0; transform: scale(0.95) translateY(-6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.kb-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 10px; border-bottom: 1px solid var(--border);
+}
+.kb-title { font-size: 13px; font-weight: 600; }
+
+.kb-body { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 14px; }
+
+.kb-group { display: flex; flex-direction: column; gap: 5px; }
+.kb-group-label {
+  font-size: 9px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.07em; margin-bottom: 2px;
+}
+.kb-row {
+  display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text);
+}
+.kb-row span { margin-left: auto; color: var(--muted); }
+
 /* ── Mobile toggle button (hidden on desktop) ── */
 .btn-mobile-panel { display: none; }
 

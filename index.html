@@ -16,6 +16,9 @@
     <div class="header-right">
       <span class="kbd-hint"><kbd>1–0</kbd> filter · <kbd>[ ]</kbd> prev/next layer · <kbd>Del</kbd> remove · <kbd>S</kbd> split · <kbd>R</kbd> reset · <kbd>D</kbd> download</span>
       <span id="wasm-status" class="status-badge loading">Đang tải WASM...</span>
+      <button id="btn-keybind" class="btn-icon" title="Keyboard shortcuts (?)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M10 14h4"/></svg>
+      </button>
       <button id="btn-mobile-panel" class="btn-mobile-panel" aria-label="Toggle panel">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
       </button>
@@ -124,6 +127,41 @@
         <canvas id="histogram" width="160" height="48"></canvas>
       </div>
     </main>
+  </div>
+</div>
+
+<!-- Keybind popup -->
+<div id="keybind-overlay" class="kb-overlay" style="display:none">
+  <div class="kb-modal">
+    <div class="kb-header">
+      <span class="kb-title">Keyboard Shortcuts</span>
+      <button id="kb-close" class="btn-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="kb-body">
+      <div class="kb-group">
+        <p class="kb-group-label">Filter</p>
+        <div class="kb-row"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> … <kbd>0</kbd><span>Thêm filter theo thứ tự</span></div>
+      </div>
+      <div class="kb-group">
+        <p class="kb-group-label">Layer</p>
+        <div class="kb-row"><kbd>[</kbd><span>Chọn layer trước</span></div>
+        <div class="kb-row"><kbd>]</kbd><span>Chọn layer sau</span></div>
+        <div class="kb-row"><kbd>Del</kbd><span>Xóa layer đang chọn</span></div>
+        <div class="kb-row"><kbd>Esc</kbd><span>Bỏ chọn layer</span></div>
+      </div>
+      <div class="kb-group">
+        <p class="kb-group-label">Xem</p>
+        <div class="kb-row"><kbd>S</kbd><span>Toggle split view</span></div>
+      </div>
+      <div class="kb-group">
+        <p class="kb-group-label">Khác</p>
+        <div class="kb-row"><kbd>R</kbd><span>Reset toàn bộ</span></div>
+        <div class="kb-row"><kbd>D</kbd><span>Download PNG</span></div>
+        <div class="kb-row"><kbd>?</kbd><span>Mở / đóng bảng này</span></div>
+      </div>
+    </div>
   </div>
 </div>
 

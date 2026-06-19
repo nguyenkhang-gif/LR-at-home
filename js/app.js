@@ -486,6 +486,9 @@ document.addEventListener('keydown', (e) => {
     case 's': case 'S':
       if (hasImage) toggleSplit();
       break;
+    case '?':
+      toggleKeybind();
+      break;
     case 'd': case 'D': {
       if (!hasImage) return;
       const a = document.createElement('a');
@@ -576,6 +579,20 @@ function syncSplitSize(w, h) {
   splitInner.style.width = `${Math.round(w * scale)}px`;
   splitInner.style.height = `${Math.round(h * scale)}px`;
 }
+
+// ── Keybind popup ─────────────────────────────────────────────────────────
+const keybindOverlay = document.getElementById('keybind-overlay');
+const btnKeybind = document.getElementById('btn-keybind');
+const btnKbClose = document.getElementById('kb-close');
+
+function toggleKeybind() {
+  const visible = keybindOverlay.style.display !== 'none';
+  keybindOverlay.style.display = visible ? 'none' : 'flex';
+}
+
+btnKeybind.addEventListener('click', toggleKeybind);
+btnKbClose.addEventListener('click', toggleKeybind);
+keybindOverlay.addEventListener('click', (e) => { if (e.target === keybindOverlay) toggleKeybind(); });
 
 // ── Mobile panel toggle ────────────────────────────────────────────────────
 const btnMobilePanel = document.getElementById('btn-mobile-panel');
