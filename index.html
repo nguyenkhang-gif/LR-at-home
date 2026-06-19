@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lightroom At Home</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Lightroom At Home</h1>
+    <span class="sub">WASM · local · zero upload</span>
+    <div class="header-right">
+      <span class="kbd-hint"><kbd>1–0</kbd> filter · <kbd>[ ]</kbd> prev/next layer · <kbd>Del</kbd> remove · <kbd>S</kbd> split · <kbd>R</kbd> reset · <kbd>D</kbd> download</span>
+      <span id="wasm-status" class="status-badge loading">Đang tải WASM...</span>
+      <button id="btn-mobile-panel" class="btn-mobile-panel" aria-label="Toggle panel">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- Sidebar -->
+    <aside>
+      <!-- Upload -->
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" hidden />
+        <svg class="upload-icon" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+        </svg>
+        <p class="upload-hint">Kéo thả hoặc click để chọn ảnh</p>
+        <p class="upload-sub">JPEG · PNG · WebP · tối đa 20MB</p>
+        <p class="upload-name" id="upload-name"></p>
+      </div>
+
+      <!-- Controls (hidden until image) -->
+      <div id="sidebar-controls" style="display:none">
+
+        <!-- Filter picker -->
+        <div class="section">
+          <p class="section-label">Thêm bộ lọc</p>
+          <div id="filter-grid"></div>
+        </div>
+
+        <!-- Presets -->
+        <div class="section" id="preset-section">
+          <div class="chain-header">
+            <p class="section-label">Presets</p>
+            <button class="btn-icon" id="btn-save-preset" title="Lưu chain hiện tại thành preset">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+            </button>
+          </div>
+          <div class="preset-list" id="preset-list"></div>
+        </div>
+
+        <!-- Param editor for selected layer -->
+        <div id="param-section" style="display:none" class="section">
+          <p class="section-label" id="param-title">Tham số</p>
+          <div id="param-panel"></div>
+        </div>
+
+        <!-- Layer chain -->
+        <div class="section" id="chain-section" style="display:none">
+          <div class="chain-header">
+            <p class="section-label">Filter chain</p>
+            <button class="btn-icon" id="btn-clear-chain" title="Xóa tất cả">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <ul class="layer-list" id="layer-list"></ul>
+        </div>
+
+        <!-- Actions -->
+        <div class="btn-group">
+          <button class="btn btn-secondary" id="btn-split">Split View <kbd>S</kbd></button>
+          <button class="btn btn-secondary" id="btn-reset">Reset <kbd>R</kbd></button>
+          <button class="btn btn-primary" id="btn-download">Tải xuống PNG <kbd>D</kbd></button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Canvas area -->
+    <main class="canvas-area">
+      <div class="canvas-wrapper">
+        <!-- Side-by-side -->
+        <div class="both-grid" id="both-grid">
+          <div class="canvas-box">
+            <canvas id="canvas-original"></canvas>
+            <span class="canvas-label">Gốc</span>
+          </div>
+          <div class="canvas-box">
+            <canvas id="canvas-output"></canvas>
+            <span class="canvas-label">Đã chỉnh</span>
+          </div>
+        </div>
+
+        <!-- Split view -->
+        <div class="split-container" id="split-container" style="display:none">
+          <div class="split-inner" id="split-inner">
+            <canvas id="canvas-output-s"></canvas>
+            <div id="split-orig">
+              <canvas id="canvas-original-s"></canvas>
+            </div>
+            <div class="split-handle" id="split-handle"></div>
+            <span class="split-label-left">Gốc</span>
+            <span class="split-label-right">Đã chỉnh</span>
+          </div>
+        </div>
+
+        <div class="empty-hint" id="empty-hint">Chọn ảnh để bắt đầu</div>
+      </div>
+
+      <div class="stats-bar" id="stats-bar"></div>
+    </main>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
